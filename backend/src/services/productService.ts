@@ -5,13 +5,13 @@ export async function lookupProduct(barcode: string): Promise<Product> {
     const response = await fetch(
       `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
     );
-    
+
     if (!response.ok) {
       throw new Error('Product not found');
     }
 
-    const data: OpenFoodFactsProduct = await response.json();
-    
+    const data = await response.json() as OpenFoodFactsProduct;
+
     if (data.status === 1 && data.product) {
       return {
         name: data.product.product_name || 'Ukjent produkt',
@@ -20,7 +20,7 @@ export async function lookupProduct(barcode: string): Promise<Product> {
         imageUrl: data.product.image_url || undefined,
       };
     }
-    
+
     return {
       name: 'Ukjent produkt',
     };
