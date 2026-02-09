@@ -1,37 +1,189 @@
 <!DOCTYPE html>
 <html lang="no">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pris-Appen Admin Dashboard</title>
+    <title>1Price Admin Dashboard</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        h1 { margin-bottom: 30px; color: #333; }
-        .card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .stat-box { background: #f9f9f9; padding: 16px; border-radius: 8px; }
-        .stat-label { font-size: 12px; color: #666; margin-bottom: 4px; }
-        .stat-value { font-size: 28px; font-weight: bold; color: #007AFF; }
-        .stat-unit { font-size: 14px; color: #999; }
-        .progress-bar { background: #e0e0e0; height: 24px; border-radius: 12px; overflow: hidden; margin: 16px 0; }
-        .progress-fill { background: linear-gradient(90deg, #34C759, #007AFF); height: 100%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold; }
-        button { background: #007AFF; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-size: 16px; cursor: pointer; }
-        button:hover { background: #0051D5; }
-        button.danger { background: #FF3B30; }
-        button.danger:hover { background: #D32F2F; }
-        .auth-section { margin-bottom: 30px; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; width: 300px; margin-right: 10px; }
-        .hidden { display: none; }
-        .error { color: #FF3B30; margin-top: 10px; }
-        .success { color: #34C759; margin-top: 10px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 30px;
+            color: white;
+            font-size: 36px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        h2 {
+            color: #333;
+            font-size: 22px;
+            margin-bottom: 20px;
+        }
+
+        h3 {
+            color: #555;
+            font-size: 18px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .stat-unit {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 4px;
+        }
+
+        .progress-bar {
+            background: rgba(102, 126, 234, 0.15);
+            height: 28px;
+            border-radius: 14px;
+            overflow: hidden;
+            margin: 16px 0;
+            border: 2px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            height: 100%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 13px;
+            font-weight: 700;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+        }
+
+        button.danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        button.danger:hover {
+            box-shadow: 0 6px 24px rgba(245, 87, 108, 0.4);
+        }
+
+        .auth-section {
+            margin-bottom: 30px;
+        }
+
+        input {
+            padding: 14px 18px;
+            border: 2px solid rgba(102, 126, 234, 0.3);
+            border-radius: 10px;
+            font-size: 16px;
+            width: 320px;
+            margin-right: 12px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background: white;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            color: #f5576c;
+            margin-top: 12px;
+            font-weight: 500;
+        }
+
+        .success {
+            color: #34C759;
+            margin-top: 12px;
+            font-weight: 500;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>🛒 Pris-Appen Admin Dashboard</h1>
-        
+
         <div class="auth-section" id="authSection">
             <div class="card">
                 <h2>Admin Login</h2>
@@ -64,7 +216,7 @@
                         <div class="stat-unit">MB</div>
                     </div>
                 </div>
-                
+
                 <h3 style="margin-top: 20px; margin-bottom: 10px;">Database Usage</h3>
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressBar" style="width: 0%">0%</div>
@@ -78,7 +230,7 @@
                     <div class="stat-box">
                         <div class="stat-label">Eligible for Cleanup</div>
                         <div class="stat-value" id="cleanupEligible">-</div>
-                        <div class="stat-unit">submissions > 180 days</div>
+                        <div class="stat-unit">Older than 180 days</div>
                     </div>
                     <div class="stat-box">
                         <div class="stat-label">Retention Policy</div>
@@ -86,7 +238,7 @@
                         <div class="stat-unit">days</div>
                     </div>
                 </div>
-                
+
                 <button onclick="runCleanup()" style="margin-top: 20px;">Run Cleanup Now</button>
                 <div id="cleanupResult" class="hidden" style="margin-top: 16px;"></div>
             </div>
@@ -122,39 +274,39 @@
         function login() {
             const secret = document.getElementById('adminSecret').value;
             adminToken = secret;
-            
+
             fetch(`${API_URL}/api/admin/dashboard`, {
                 headers: { 'Authorization': `Bearer ${secret}` }
             })
-            .then(res => {
-                if (!res.ok) throw new Error('Invalid credentials');
-                return res.json();
-            })
-            .then(data => {
-                document.getElementById('authSection').classList.add('hidden');
-                document.getElementById('dashboard').classList.remove('hidden');
-                updateDashboard(data);
-            })
-            .catch(err => {
-                document.getElementById('authError').textContent = 'Invalid admin secret';
-                document.getElementById('authError').classList.remove('hidden');
-            });
+                .then(res => {
+                    if (!res.ok) throw new Error('Invalid credentials');
+                    return res.json();
+                })
+                .then(data => {
+                    document.getElementById('authSection').classList.add('hidden');
+                    document.getElementById('dashboard').classList.remove('hidden');
+                    updateDashboard(data);
+                })
+                .catch(err => {
+                    document.getElementById('authError').textContent = 'Invalid admin secret';
+                    document.getElementById('authError').classList.remove('hidden');
+                });
         }
 
         function updateDashboard(data) {
             const storage = data.storage;
             const system = data.system_info;
-            
+
             document.getElementById('totalSubmissions').textContent = storage.total_submissions.toLocaleString();
             document.getElementById('last30Days').textContent = storage.last_30_days.toLocaleString();
             document.getElementById('last90Days').textContent = storage.last_90_days.toLocaleString();
             document.getElementById('storageUsed').textContent = storage.estimated_size_mb;
             document.getElementById('cleanupEligible').textContent = storage.older_than_180_days.toLocaleString();
-            
+
             const usagePercent = Math.min(100, system.usage_percentage);
             document.getElementById('progressBar').style.width = usagePercent + '%';
             document.getElementById('progressBar').textContent = usagePercent.toFixed(1) + '%';
-            
+
             document.getElementById('dist30').textContent = storage.last_30_days.toLocaleString();
             document.getElementById('dist90').textContent = (storage.last_90_days - storage.last_30_days).toLocaleString();
             document.getElementById('dist180').textContent = (storage.last_180_days - storage.last_90_days).toLocaleString();
@@ -163,11 +315,11 @@
 
         function runCleanup() {
             if (!confirm('Are you sure you want to delete all submissions older than 180 days?')) return;
-            
+
             const resultDiv = document.getElementById('cleanupResult');
             resultDiv.textContent = 'Running cleanup...';
             resultDiv.className = '';
-            
+
             fetch(`${API_URL}/api/admin/cleanup`, {
                 method: 'POST',
                 headers: {
@@ -176,17 +328,18 @@
                 },
                 body: JSON.stringify({ retention_days: 180 })
             })
-            .then(res => res.json())
-            .then(data => {
-                resultDiv.textContent = `✅ Cleanup complete! Deleted ${data.deleted_count} submissions.`;
-                resultDiv.className = 'success';
-                setTimeout(() => location.reload(), 2000);
-            })
-            .catch(err => {
-                resultDiv.textContent = '❌ Cleanup failed: ' + err.message;
-                resultDiv.className = 'error';
-            });
+                .then(res => res.json())
+                .then(data => {
+                    resultDiv.textContent = `✅ Cleanup complete! Deleted ${data.deleted_count} submissions.`;
+                    resultDiv.className = 'success';
+                    setTimeout(() => location.reload(), 2000);
+                })
+                .catch(err => {
+                    resultDiv.textContent = '❌ Cleanup failed: ' + err.message;
+                    resultDiv.className = 'error';
+                });
         }
     </script>
 </body>
+
 </html>
