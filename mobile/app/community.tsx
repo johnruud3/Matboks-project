@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#8966d8',
     padding: 20,
     paddingTop: 60,
     shadowColor: '#000',
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: '#d9c8f8',
   },
   countBadge: {
     fontSize: 11,

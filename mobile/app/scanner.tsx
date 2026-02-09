@@ -83,11 +83,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   button: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#8966d8',
     padding: 18,
     borderRadius: 14,
     marginHorizontal: 40,
-    shadowColor: '#6366F1',
+    shadowColor: '#8966d8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

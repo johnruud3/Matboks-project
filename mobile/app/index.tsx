@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
@@ -14,6 +14,11 @@ export default function HomeScreen() {
         <Text style={styles.subtitle}>
           Skann strekkoder og få AI-drevet prisvurdering
         </Text>
+        <Image
+          source={require('../assets/Matboksen_logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </View>
 
       <View style={styles.buttonContainer}>
@@ -57,7 +62,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#6366F1',
+    backgroundColor: '#8966d8',
     justifyContent: 'space-between',
   },
   header: {
@@ -81,6 +86,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 20,
     lineHeight: 26,
+  },
+  logo: {
+    width: 800,
+    height: 440,
+    marginTop: 5,
+    marginBottom: 35,
   },
   buttonContainer: {
     gap: 16,

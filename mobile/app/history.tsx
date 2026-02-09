@@ -232,11 +232,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   scanButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#8966d8',
     padding: 18,
     borderRadius: 14,
     paddingHorizontal: 32,
-    shadowColor: '#6366F1',
+    shadowColor: '#8966d8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

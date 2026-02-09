@@ -142,7 +142,7 @@ export default function ProductDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#6366F1" />
+        <ActivityIndicator size="large" color="#8966d8" />
         <Text style={styles.loadingText}>Laster prishistorikk...</Text>
       </View>
     );
@@ -230,7 +230,7 @@ export default function ProductDetailScreen() {
                   propsForDots: {
                     r: '6',
                     strokeWidth: '2',
-                    stroke: '#6366F1',
+                    stroke: '#d9c8f8',
                   },
                 }}
                 bezier
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   retryButton: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#d9c8f8',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
@@ -315,12 +315,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   backButtonAltText: {
-    color: '#6366F1',
+    color: '#d9c8f8',
     fontSize: 16,
     fontWeight: '600',
   },
   header: {
-    backgroundColor: '#6366F1',
+    backgroundColor: '#d9c8f8',
     padding: 20,
     paddingTop: 60,
     paddingBottom: 24,
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: '#d9c8f8',
   },
   chartContainer: {
     backgroundColor: '#fff',
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
   historyPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#6366F1',
+    color: '#d9c8f8',
   },
   historyDate: {
     fontSize: 12,
