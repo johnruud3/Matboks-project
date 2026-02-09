@@ -8,7 +8,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
-      
+
       <View style={styles.header}>
         <Text style={styles.title}>🛒 Pris-Appen</Text>
         <Text style={styles.subtitle}>
@@ -22,6 +22,13 @@ export default function HomeScreen() {
           onPress={() => router.push('/scanner')}
         >
           <Text style={styles.primaryButtonText}>📸 Skann produkt</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push('/community')}
+        >
+          <Text style={styles.secondaryButtonText}>🤝 Fellesskapspriser</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
