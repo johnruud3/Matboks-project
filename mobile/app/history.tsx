@@ -91,7 +91,7 @@ export default function HistoryScreen() {
         <Text style={styles.productName}>{item.product.name}</Text>
         <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
       </View>
-      
+
       <View style={styles.itemContent}>
         <View style={styles.priceSection}>
           <Text style={styles.price}>{item.price} NOK</Text>
@@ -105,7 +105,7 @@ export default function HistoryScreen() {
           </Text>
         </View>
       </View>
-      
+
       {item.product.brand && (
         <Text style={styles.brand}>{item.product.brand}</Text>
       )}
@@ -138,7 +138,7 @@ export default function HistoryScreen() {
             refreshing={refreshing}
             onRefresh={handleRefresh}
           />
-          
+
           <View style={styles.footer}>
             <TouchableOpacity
               style={styles.clearButton}
@@ -156,16 +156,21 @@ export default function HistoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F7FA',
   },
   listContent: {
     padding: 16,
   },
   historyItem: {
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#fff',
+    padding: 18,
+    borderRadius: 16,
     marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -227,15 +232,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   scanButton: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#6366F1',
+    padding: 18,
+    borderRadius: 14,
     paddingHorizontal: 32,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   scanButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   footer: {
     padding: 16,
@@ -243,14 +253,19 @@ const styles = StyleSheet.create({
     borderTopColor: '#eee',
   },
   clearButton: {
-    backgroundColor: '#FF3B30',
+    backgroundColor: '#EF4444',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
+    shadowColor: '#EF4444',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   clearButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });

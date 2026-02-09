@@ -233,13 +233,13 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F7FA',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F7FA',
   },
   loadingText: {
     marginTop: 16,
@@ -247,32 +247,36 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: '#6366F1',
     padding: 20,
     paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
     marginBottom: 12,
   },
   backButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#fff',
     fontWeight: '600',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: '#fff',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#fff',
     marginBottom: 16,
   },
   searchInput: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
@@ -303,12 +307,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
     marginRight: 12,
   },
   price: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#34C759',
+    color: '#6366F1',
   },
   countBadge: {
     fontSize: 11,
@@ -327,6 +332,7 @@ const styles = StyleSheet.create({
   detailIcon: {
     fontSize: 16,
     marginRight: 8,
+    color: '#666',
   },
   detailText: {
     fontSize: 14,
