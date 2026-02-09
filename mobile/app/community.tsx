@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
@@ -26,12 +27,13 @@ export default function CommunityScreen() {
   const [submissions, setSubmissions] = useState<PriceSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const fetchSubmissions = async () => {
     try {
       const API_URL = 'https://1price-project-production.up.railway.app';
       const response = await fetch(`${API_URL}/api/prices/recent?limit=50`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch submissions');
       }
@@ -55,6 +57,18 @@ export default function CommunityScreen() {
     fetchSubmissions();
   };
 
+  const filteredSubmissions = submissions.filter((item) => {
+    if (!searchQuery) return true;
+
+    const query = searchQuery.toLowerCase();
+    return (
+      item.product_name.toLowerCase().includes(query) ||
+      item.store_name?.toLowerCase().includes(query) ||
+      item.location?.toLowerCase().includes(query) ||
+      item.barcode.includes(query)
+    );
+  });
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -68,9 +82,9 @@ export default function CommunityScreen() {
     if (diffHours < 24) return `${diffHours} timer siden`;
     if (diffDays === 1) return 'I går';
     if (diffDays < 7) return `${diffDays} dager siden`;
-    
-    return date.toLocaleDateString('nb-NO', { 
-      day: 'numeric', 
+
+    return date.toLocaleDateString('nb-NO', {
+      day: 'numeric',
       month: 'short',
       year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
@@ -130,10 +144,18 @@ export default function CommunityScreen() {
         <Text style={styles.subtitle}>
           {submissions.length} bidrag fra brukere
         </Text>
+
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Søk etter produkt, butikk eller sted..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          clearButtonMode="while-editing"
+        />
       </View>
 
       <FlatList
-        data={submissions}
+        data={filteredSubmissions}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
@@ -142,10 +164,12 @@ export default function CommunityScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>📦</Text>
-            <Text style={styles.emptyText}>Ingen priser ennå</Text>
+            <Text style={styles.emptyEmoji}>{searchQuery ? '�' : '�'}</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery ? 'Ingen resultater' : 'Ingen priser ennå'}
+            </Text>
             <Text style={styles.emptySubtext}>
-              Vær den første til å bidra!
+              {searchQuery ? 'Prøv et annet søk' : 'Vær den første til å bidra!'}
             </Text>
           </View>
         }
@@ -193,6 +217,15 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#666',
+    marginBottom: 16,
+  },
+  searchInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
   list: {
     padding: 16,
