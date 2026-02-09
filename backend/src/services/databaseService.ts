@@ -91,3 +91,19 @@ export async function getAllRecentPrices(limit: number = 50): Promise<PriceSubmi
 
   return (data || []) as PriceSubmission[];
 }
+
+export async function getPriceHistory(barcode: string): Promise<PriceSubmission[]> {
+  const client = getSupabaseClient();
+
+  const { data, error } = await client
+    .from('price_submissions')
+    .select('*')
+    .eq('barcode', barcode)
+    .order('submitted_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`Failed to get price history: ${error.message}`);
+  }
+
+  return (data || []) as PriceSubmission[];
+}

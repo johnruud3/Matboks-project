@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { submitPrice, getPriceStats, getRecentPrices, getAllRecentPrices } from '../services/databaseService.js';
+import { submitPrice, getPriceStats, getRecentPrices, getAllRecentPrices, getPriceHistory } from '../services/databaseService.js';
 import { SubmitPriceRequest } from '../types/database.js';
 
 const router = Router();
@@ -125,6 +125,34 @@ router.get('/recent', async (req: Request, res: Response) => {
     console.error('Error getting all recent prices:', error);
     res.status(500).json({
       error: 'Failed to get recent prices',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Get price history for a product (for charting)
+router.get('/history/:barcode', async (req: Request, res: Response) => {
+  try {
+    const { barcode } = req.params;
+
+    if (!barcode) {
+      res.status(400).json({
+        error: 'Barcode is required',
+      });
+      return;
+    }
+
+    const history = await getPriceHistory(barcode);
+
+    res.json({
+      barcode,
+      count: history.length,
+      history,
+    });
+  } catch (error) {
+    console.error('Error getting price history:', error);
+    res.status(500).json({
+      error: 'Failed to get price history',
       message: error instanceof Error ? error.message : 'Unknown error',
     });
   }
