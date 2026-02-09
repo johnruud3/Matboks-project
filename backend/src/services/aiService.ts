@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { Product, PriceEvaluation } from '../types/index.js';
+import { getPriceStats } from './databaseService.js';
 
 let openai: OpenAI;
 
@@ -24,7 +25,15 @@ export async function evaluatePrice(
   currency: string,
   barcode: string
 ): Promise<PriceEvaluation> {
-  const prompt = buildPrompt(product, price, currency);
+  // Fetch crowdsourced price data if available
+  let priceStats = null;
+  try {
+    priceStats = await getPriceStats(barcode);
+  } catch (error) {
+    console.log('No community price data available for this product');
+  }
+
+  const prompt = buildPrompt(product, price, currency, priceStats);
 
   try {
     const client = getOpenAIClient();
@@ -36,8 +45,10 @@ export async function evaluatePrice(
           content: `Du er en ekspert på norske dagligvarepriser. Du hjelper forbrukere med å vurdere om en pris er god, gjennomsnittlig eller dyr basert på det norske markedet.
 
 Viktige retningslinjer:
-- Vurder priser i kontekst av det norske markedet (Norge har generelt høyere priser enn mange andre land)
-- Ta hensyn til produktkategori, merkevare vs. butikkmerke, og typiske prisnivåer
+- Bruk fellesskapspriser hvis tilgjengelig for mer nøyaktige vurderinger
+- Analyser produktkategori (meieri, snacks, drikke, etc.) og typiske prisnivåer
+- Vurder merkevareposisjonering (premium vs. butikkmerke)
+- Ta hensyn til norsk markedskontekst (Norge har generelt høyere priser)
 - Vær ærlig om usikkerhet - hvis du ikke har nok informasjon, si det
 - Svar alltid på norsk
 - Hold forklaringer korte og forbrukerrettede (2-3 setninger)
@@ -91,7 +102,12 @@ Returner alltid et JSON-objekt med denne strukturen:
   }
 }
 
-function buildPrompt(product: Product, price: number, currency: string): string {
+function buildPrompt(
+  product: Product,
+  price: number,
+  currency: string,
+  priceStats: any
+): string {
   let prompt = `Vurder denne prisen i det norske dagligvaremarkedet:\n\n`;
   prompt += `Produkt: ${product.name}\n`;
 
@@ -104,6 +120,26 @@ function buildPrompt(product: Product, price: number, currency: string): string 
   }
 
   prompt += `Pris: ${price} ${currency}\n\n`;
+
+  // Add community price data if available
+  if (priceStats) {
+    prompt += `FELLESSKAPSPRISER (fra ${priceStats.submission_count} brukere):\n`;
+    prompt += `- Gjennomsnitt: ${priceStats.avg_price} ${currency}\n`;
+    prompt += `- Laveste: ${priceStats.min_price} ${currency}\n`;
+    prompt += `- Høyeste: ${priceStats.max_price} ${currency}\n`;
+    prompt += `- Sist oppdatert: ${new Date(priceStats.last_updated).toLocaleDateString('nb-NO')}\n\n`;
+    prompt += `Bruk disse dataene som hovedreferanse, men vurder også:\n`;
+    prompt += `- Produktkategori og typiske prisnivåer\n`;
+    prompt += `- Merkevareposisjonering (premium/standard/budsjett)\n`;
+    prompt += `- Norsk markedskontekst\n\n`;
+  } else {
+    prompt += `INGEN FELLESSKAPSPRISER TILGJENGELIG\n`;
+    prompt += `Vurder basert på:\n`;
+    prompt += `- Produktkategori og typiske norske prisnivåer\n`;
+    prompt += `- Merkevareposisjonering\n`;
+    prompt += `- Generell markedskunnskap\n\n`;
+  }
+
   prompt += `Er dette en god, gjennomsnittlig eller dyr pris? Forklar kort.`;
 
   return prompt;
