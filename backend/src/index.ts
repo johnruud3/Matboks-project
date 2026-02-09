@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import evaluateRouter from './routes/evaluate.js';
+import pricesRouter from './routes/prices.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api', evaluateRouter);
+app.use('/api/prices', pricesRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Pris-Appen API running on http://localhost:${PORT}`);
