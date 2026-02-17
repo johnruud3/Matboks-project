@@ -8,8 +8,10 @@ import {
   RefreshControl,
   TouchableOpacity,
   TextInput,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { API_URL } from '@/utils/config';
 
 interface GroupedPrice {
   barcode: string;
@@ -21,6 +23,75 @@ interface GroupedPrice {
   stores: string[];
   locations: string[];
   latest_submission: string;
+}
+
+function CommunityCard({
+  item,
+  formatDate,
+  onPress,
+}: {
+  item: GroupedPrice;
+  formatDate: (dateString: string) => string;
+  onPress: () => void;
+}) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`${API_URL}/api/product/${item.barcode}`)
+      .then((res) => res.json())
+      .then((data: { imageUrl?: string | null }) => {
+        if (!cancelled && data.imageUrl) setImageUrl(data.imageUrl);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [item.barcode]);
+
+  const priceDisplay = item.min_price === item.max_price
+    ? `${item.min_price} ${item.currency}`
+    : `${item.min_price} - ${item.max_price} ${item.currency}`;
+
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.cardRow}>
+        {imageUrl ? (
+          <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.productImagePlaceholder} />
+        )}
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.productName} numberOfLines={2}>{item.product_name}</Text>
+            <View>
+              <Text style={styles.price}>{priceDisplay}</Text>
+              {item.submission_count > 1 && (
+                <Text style={styles.countBadge}>{item.submission_count} bidrag</Text>
+              )}
+            </View>
+          </View>
+          <View style={styles.cardDetails}>
+            {item.stores.length > 0 && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>🏪</Text>
+                <Text style={styles.detailText}>{item.stores.join(', ')}</Text>
+              </View>
+            )}
+            {item.locations.length > 0 && (
+              <View style={styles.detailRow}>
+                <Text style={styles.detailIcon}>📍</Text>
+                <Text style={styles.detailText}>{item.locations.join(', ')}</Text>
+              </View>
+            )}
+            <View style={styles.detailRow}>
+              <Text style={styles.detailIcon}>🕐</Text>
+              <Text style={styles.detailText}>{formatDate(item.latest_submission)}</Text>
+            </View>
+          </View>
+          <Text style={styles.barcode}>Strekkode: {item.barcode}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
 }
 
 export default function CommunityScreen() {
@@ -38,7 +109,6 @@ export default function CommunityScreen() {
         setLoadingMore(true);
       }
 
-      const API_URL = 'https://1price-project-production.up.railway.app';
       const currentCount = append ? submissions.length : 0;
       const response = await fetch(`${API_URL}/api/prices/grouped?limit=${50 + currentCount}`);
 
@@ -111,54 +181,13 @@ export default function CommunityScreen() {
     });
   };
 
-  const renderItem = ({ item }: { item: GroupedPrice }) => {
-    const priceDisplay = item.min_price === item.max_price
-      ? `${item.min_price} ${item.currency}`
-      : `${item.min_price} - ${item.max_price} ${item.currency}`;
-
-    const countText = item.submission_count > 1 ? ` (${item.submission_count} bidrag)` : '';
-
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => router.push(`/product-detail?barcode=${item.barcode}&name=${encodeURIComponent(item.product_name)}`)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardHeader}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.product_name}
-          </Text>
-          <View>
-            <Text style={styles.price}>{priceDisplay}</Text>
-            {item.submission_count > 1 && (
-              <Text style={styles.countBadge}>{item.submission_count} bidrag</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={styles.cardDetails}>
-          {item.stores.length > 0 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>🏪</Text>
-              <Text style={styles.detailText}>{item.stores.join(', ')}</Text>
-            </View>
-          )}
-          {item.locations.length > 0 && (
-            <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>📍</Text>
-              <Text style={styles.detailText}>{item.locations.join(', ')}</Text>
-            </View>
-          )}
-          <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>🕐</Text>
-            <Text style={styles.detailText}>{formatDate(item.latest_submission)}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.barcode}>Strekkode: {item.barcode}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderItem = ({ item }: { item: GroupedPrice }) => (
+    <CommunityCard
+      item={item}
+      formatDate={formatDate}
+      onPress={() => router.push(`/product-detail?barcode=${item.barcode}&name=${encodeURIComponent(item.product_name)}`)}
+    />
+  );
 
   if (loading) {
     return (
@@ -307,6 +336,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  productImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  productImagePlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#e8e8e8',
+  },
+  cardContent: {
+    flex: 1,
+    minWidth: 0,
   },
   cardHeader: {
     flexDirection: 'row',
