@@ -57,7 +57,9 @@ function CommunityCard({
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
         ) : (
-          <View style={styles.productImagePlaceholder} />
+          <View style={styles.productImagePlaceholder}>
+            <Text style={styles.noImageText}>Ingen bilde</Text>
+          </View>
         )}
         <View style={styles.cardContent}>
           <View style={styles.cardHeader}>
@@ -354,6 +356,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginRight: 12,
     backgroundColor: '#e8e8e8',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    fontSize: 10,
+    color: '#999',
+    textAlign: 'center',
   },
   cardContent: {
     flex: 1,
