@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,19 @@ interface GroupedPrice {
   locations: string[];
   latest_submission: string;
 }
+
+interface KassalProduct {
+  name: string;
+  brand: string | null;
+  ean: string | null;
+  image: string | null;
+  current_price: number;
+  store_name: string | null;
+}
+
+type FeedItem =
+  | { type: 'community'; data: GroupedPrice }
+  | { type: 'kassal'; data: KassalProduct };
 
 function CommunityCard({
   item,
@@ -95,7 +108,6 @@ function CommunityCard({
             </View>
           )}
 
-          {/* Price quality badges */}
           {(isStablePrice || isPopular) && (
             <View style={styles.badgeRow}>
               {isStablePrice && (
@@ -137,14 +149,75 @@ function CommunityCard({
   );
 }
 
+function KassalCard({
+  item,
+  onPress,
+}: {
+  item: KassalProduct;
+  onPress: () => void;
+}) {
+  return (
+    <TouchableOpacity
+      style={[styles.card, subtleShadow]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View style={styles.cardRow}>
+        {item.image ? (
+          <Image source={{ uri: item.image }} style={styles.productImage} resizeMode="cover" />
+        ) : (
+          <View style={styles.productImagePlaceholder}>
+            <Ionicons name="image-outline" size={24} color={colors.textMuted} />
+          </View>
+        )}
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
+            <View style={styles.priceColumn}>
+              <Text style={styles.price}>{item.current_price} NOK</Text>
+            </View>
+          </View>
+
+          <View style={styles.kassalBadge}>
+            <Ionicons name="pricetag" size={13} color={colors.primaryLight} />
+            <Text style={styles.kassalBadgeText}>Butikkpris</Text>
+          </View>
+
+          <View style={styles.cardDetails}>
+            {item.brand && (
+              <View style={styles.detailRow}>
+                <Ionicons name="bookmark-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.detailText}>{item.brand}</Text>
+              </View>
+            )}
+            {item.store_name && (
+              <View style={styles.detailRow}>
+                <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
+                <Text style={styles.detailText}>{item.store_name}</Text>
+              </View>
+            )}
+          </View>
+
+          {item.ean && (
+            <Text style={styles.barcode}>{item.ean}</Text>
+          )}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 export default function CommunityScreen() {
   const router = useRouter();
   const [submissions, setSubmissions] = useState<GroupedPrice[]>([]);
+  const [kassalProducts, setKassalProducts] = useState<KassalProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [kassalLoading, setKassalLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchSubmissions = async (append: boolean = false) => {
     try {
@@ -181,13 +254,48 @@ export default function CommunityScreen() {
     }
   };
 
+  const fetchKassalProducts = useCallback(async (query?: string) => {
+    try {
+      setKassalLoading(true);
+      const url = query
+        ? `${API_URL}/api/products/search?q=${encodeURIComponent(query)}`
+        : `${API_URL}/api/products/search`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch Kassal products');
+      const data = await response.json();
+      setKassalProducts(data.products || []);
+    } catch (error) {
+      console.error('Failed to fetch Kassal products:', error);
+    } finally {
+      setKassalLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchSubmissions();
+    fetchKassalProducts();
   }, []);
+
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+
+    if (searchQuery.length >= 2) {
+      searchTimer.current = setTimeout(() => {
+        fetchKassalProducts(searchQuery);
+      }, 500);
+    } else if (searchQuery.length === 0) {
+      fetchKassalProducts();
+    }
+
+    return () => {
+      if (searchTimer.current) clearTimeout(searchTimer.current);
+    };
+  }, [searchQuery]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchSubmissions();
+    fetchKassalProducts(searchQuery || undefined);
   };
 
   const filteredSubmissions = submissions.filter((item) => {
@@ -201,6 +309,40 @@ export default function CommunityScreen() {
       item.barcode.includes(query)
     );
   });
+
+  const getMergedFeed = (): FeedItem[] => {
+    const communityBarcodes = new Set(filteredSubmissions.map((s) => s.barcode));
+
+    const dedupedKassal = kassalProducts.filter(
+      (kp) => !kp.ean || !communityBarcodes.has(kp.ean)
+    );
+
+    const communityItems: FeedItem[] = filteredSubmissions.map((data) => ({
+      type: 'community' as const,
+      data,
+    }));
+
+    const kassalItems: FeedItem[] = dedupedKassal.map((data) => ({
+      type: 'kassal' as const,
+      data,
+    }));
+
+    const merged: FeedItem[] = [];
+    let ci = 0;
+    let ki = 0;
+
+    while (ci < communityItems.length || ki < kassalItems.length) {
+      if (ci < communityItems.length) {
+        merged.push(communityItems[ci++]);
+        if (ci < communityItems.length) merged.push(communityItems[ci++]);
+      }
+      if (ki < kassalItems.length) {
+        merged.push(kassalItems[ki++]);
+      }
+    }
+
+    return merged;
+  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -223,13 +365,43 @@ export default function CommunityScreen() {
     });
   };
 
-  const renderItem = ({ item }: { item: GroupedPrice }) => (
-    <CommunityCard
-      item={item}
-      formatDate={formatDate}
-      onPress={() => router.push(`/product-detail?barcode=${item.barcode}&name=${encodeURIComponent(item.product_name)}`)}
-    />
-  );
+  const feed = getMergedFeed();
+
+  const renderFeedItem = ({ item }: { item: FeedItem }) => {
+    if (item.type === 'community') {
+      return (
+        <CommunityCard
+          item={item.data}
+          formatDate={formatDate}
+          onPress={() =>
+            router.push(
+              `/product-detail?barcode=${item.data.barcode}&name=${encodeURIComponent(item.data.product_name)}`
+            )
+          }
+        />
+      );
+    }
+
+    return (
+      <KassalCard
+        item={item.data}
+        onPress={() => {
+          if (item.data.ean) {
+            router.push(
+              `/product-detail?barcode=${item.data.ean}&name=${encodeURIComponent(item.data.name)}`
+            );
+          }
+        }}
+      />
+    );
+  };
+
+  const getFeedKey = (item: FeedItem, index: number) => {
+    if (item.type === 'community') {
+      return `community-${item.data.barcode}-${item.data.min_price}-${index}`;
+    }
+    return `kassal-${item.data.ean || item.data.name}-${index}`;
+  };
 
   if (loading) {
     return (
@@ -242,7 +414,6 @@ export default function CommunityScreen() {
 
   return (
     <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
-      {/* Header */}
       <LinearGradient colors={[...gradients.header]} style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -266,13 +437,16 @@ export default function CommunityScreen() {
             onChangeText={setSearchQuery}
             clearButtonMode="while-editing"
           />
+          {kassalLoading && searchQuery.length >= 2 && (
+            <ActivityIndicator size="small" color={colors.primaryLight} style={styles.searchSpinner} />
+          )}
         </View>
       </LinearGradient>
 
       <FlatList
-        data={filteredSubmissions}
-        renderItem={renderItem}
-        keyExtractor={(item, index) => `${item.barcode}-${item.min_price}-${index}`}
+        data={feed}
+        renderItem={renderFeedItem}
+        keyExtractor={getFeedKey}
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl
@@ -293,7 +467,7 @@ export default function CommunityScreen() {
               <ActivityIndicator size="small" color={colors.primaryLight} />
               <Text style={styles.loadingFooterText}>Laster flere...</Text>
             </View>
-          ) : !hasMore && submissions.length > 0 ? (
+          ) : !hasMore && feed.length > 0 ? (
             <View style={styles.loadingFooter}>
               <Text style={styles.endText}>Du har nådd slutten</Text>
             </View>
@@ -385,6 +559,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.white,
   },
+  searchSpinner: {
+    marginRight: spacing.md,
+  },
   list: {
     padding: spacing.md,
   },
@@ -465,6 +642,24 @@ const styles = StyleSheet.create({
   storePriceText: {
     fontSize: 12,
     fontWeight: '600',
+    color: colors.primaryLight,
+  },
+  kassalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.full,
+    marginBottom: spacing.sm,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.25)',
+  },
+  kassalBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: colors.primaryLight,
   },
   badgeRow: {
