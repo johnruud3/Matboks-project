@@ -6,11 +6,41 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { getHistory, clearHistory } from '@/services/storage';
 import { ScanHistoryItem } from '@/types';
+import { API_URL } from '@/utils/config';
+import { colors, gradients, spacing, radii, glowShadow } from '@/utils/theme';
+
+function HistoryItemImage({ barcode }: { barcode: string }) {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!barcode) return;
+    let cancelled = false;
+    fetch(`${API_URL}/api/product/${barcode}`)
+      .then((res) => res.json())
+      .then((data: { imageUrl?: string | null }) => {
+        if (!cancelled && data.imageUrl) setImageUrl(data.imageUrl);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [barcode]);
+
+  if (imageUrl) {
+    return <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />;
+  }
+
+  return (
+    <View style={styles.productImagePlaceholder}>
+      <Ionicons name="image-outline" size={22} color={colors.textMuted} />
+    </View>
+  );
+}
 
 export default function HistoryScreen() {
   const router = useRouter();
@@ -51,43 +81,30 @@ export default function HistoryScreen() {
     );
   };
 
-  // API returns English: good | average | expensive
   const getEvaluationColor = (evaluation: string) => {
     switch (evaluation) {
-      case 'good':
-        return '#34C759';
-      case 'average':
-        return '#FF9500';
-      case 'expensive':
-        return '#FF3B30';
-      default:
-        return '#999';
+      case 'good': return colors.good;
+      case 'average': return colors.average;
+      case 'expensive': return colors.expensive;
+      default: return colors.textMuted;
     }
   };
 
-  const getEvaluationEmoji = (evaluation: string) => {
+  const getEvaluationIcon = (evaluation: string) => {
     switch (evaluation) {
-      case 'good':
-        return '✅';
-      case 'average':
-        return '⚠️';
-      case 'expensive':
-        return '❌';
-      default:
-        return '❓';
+      case 'good': return 'checkmark-circle';
+      case 'average': return 'alert-circle';
+      case 'expensive': return 'close-circle';
+      default: return 'help-circle';
     }
   };
 
   const getEvaluationLabel = (evaluation: string) => {
     switch (evaluation) {
-      case 'good':
-        return 'Bra';
-      case 'average':
-        return 'Gjennomsnittlig';
-      case 'expensive':
-        return 'Dyrt';
-      default:
-        return evaluation;
+      case 'good': return 'Bra';
+      case 'average': return 'Gjennomsnittlig';
+      case 'expensive': return 'Dyrt';
+      default: return evaluation;
     }
   };
 
@@ -129,41 +146,49 @@ export default function HistoryScreen() {
 
   const getFilterLabel = () => {
     switch (filterPeriod) {
-      case 'day':
-        return 'I dag';
-      case 'week':
-        return 'Denne uken';
-      case 'month':
-        return 'Denne måneden';
-      default:
-        return 'Totalt';
+      case 'day': return 'I dag';
+      case 'week': return 'Denne uken';
+      case 'month': return 'Denne måneden';
+      default: return 'Totalt';
     }
   };
 
   const renderItem = ({ item }: { item: ScanHistoryItem }) => (
     <View style={styles.historyItem}>
-      <View style={styles.itemHeader}>
-        <Text style={styles.productName}>{item.product.name}</Text>
-        <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
-      </View>
+      <View style={styles.itemRow}>
+        <HistoryItemImage barcode={item.barcode} />
+        <View style={styles.itemDetails}>
+          <View style={styles.itemHeader}>
+            <Text style={styles.productName} numberOfLines={1}>{item.product.name}</Text>
+            <Text style={styles.timestamp}>{formatDate(item.timestamp)}</Text>
+          </View>
 
-      <View style={styles.itemContent}>
-        <View style={styles.priceSection}>
-          <Text style={styles.price}>{item.price} NOK</Text>
-          <Text
-            style={[
-              styles.evaluation,
-              { color: getEvaluationColor(item.evaluation) },
-            ]}
-          >
-            {getEvaluationEmoji(item.evaluation)} {getEvaluationLabel(item.evaluation)}
-          </Text>
+          <View style={styles.itemContent}>
+            <View style={styles.priceSection}>
+              <Text style={styles.price}>{item.price} NOK</Text>
+              <View style={styles.evalBadge}>
+                <Ionicons
+                  name={getEvaluationIcon(item.evaluation) as any}
+                  size={16}
+                  color={getEvaluationColor(item.evaluation)}
+                />
+                <Text
+                  style={[
+                    styles.evaluation,
+                    { color: getEvaluationColor(item.evaluation) },
+                  ]}
+                >
+                  {getEvaluationLabel(item.evaluation)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {item.product.brand && (
+            <Text style={styles.brand}>{item.product.brand}</Text>
+          )}
         </View>
       </View>
-
-      {item.product.brand && (
-        <Text style={styles.brand}>{item.product.brand}</Text>
-      )}
     </View>
   );
 
@@ -171,24 +196,31 @@ export default function HistoryScreen() {
   const totalSpent = calculateTotalSpent();
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
       {history.length === 0 ? (
         <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📊</Text>
+          <Ionicons name="analytics-outline" size={64} color={colors.textMuted} />
           <Text style={styles.emptyText}>Ingen skanninger ennå</Text>
           <Text style={styles.emptySubtext}>
             Skann ditt første produkt for å se historikk
           </Text>
           <TouchableOpacity
-            style={styles.scanButton}
+            style={[styles.scanButton, glowShadow]}
             onPress={() => router.push('/scanner')}
           >
-            <Text style={styles.scanButtonText}>Skann produkt</Text>
+            <LinearGradient
+              colors={[...gradients.primaryBtn]}
+              style={styles.scanButtonGradient}
+            >
+              <Ionicons name="camera-outline" size={20} color={colors.white} />
+              <Text style={styles.scanButtonText}>Skann produkt</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       ) : (
         <>
-          <View style={styles.spendingSummary}>
+          {/* Spending summary glass card */}
+          <View style={[styles.spendingSummary, glowShadow]}>
             <View style={styles.spendingHeader}>
               <Text style={styles.spendingTitle}>Varer skannet:</Text>
               <TouchableOpacity
@@ -201,12 +233,12 @@ export default function HistoryScreen() {
                 }}
               >
                 <Text style={styles.filterText}>{getFilterLabel()}</Text>
-                <Ionicons name="chevron-down" size={16} color="#8966d8" />
+                <Ionicons name="chevron-down" size={16} color={colors.primaryLight} />
               </TouchableOpacity>
             </View>
             <Text style={styles.spendingAmount}>{totalSpent.toFixed(2)} NOK</Text>
             <Text style={styles.spendingSubtitle}>
-              {filteredHistory.length} {filteredHistory.length === 1 ? 'varer' : 'varer'}
+              {filteredHistory.length} {filteredHistory.length === 1 ? 'vare' : 'varer'}
             </Text>
           </View>
 
@@ -224,49 +256,72 @@ export default function HistoryScreen() {
               style={styles.clearButton}
               onPress={handleClearHistory}
             >
+              <Ionicons name="trash-outline" size={18} color={colors.white} />
               <Text style={styles.clearButtonText}>Slett historikk</Text>
             </TouchableOpacity>
           </View>
         </>
       )}
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
   listContent: {
-    padding: 16,
+    padding: spacing.md,
   },
   historyItem: {
-    backgroundColor: '#fff',
-    padding: 18,
-    borderRadius: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: colors.glassBg,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    marginBottom: spacing.sm + 4,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  productImage: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.sm,
+    marginRight: spacing.sm + 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  productImagePlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: radii.sm,
+    marginRight: spacing.sm + 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  itemDetails: {
+    flex: 1,
   },
   itemHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   productName: {
     fontSize: 16,
     fontWeight: '600',
     flex: 1,
-    marginRight: 8,
+    marginRight: spacing.sm,
+    color: colors.white,
   },
   timestamp: {
     fontSize: 12,
-    color: '#999',
+    color: colors.textMuted,
   },
   itemContent: {
     marginBottom: 4,
@@ -279,6 +334,12 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: colors.white,
+  },
+  evalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   evaluation: {
     fontSize: 14,
@@ -286,7 +347,7 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
     marginTop: 4,
   },
   emptyState: {
@@ -294,104 +355,101 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+    gap: spacing.sm,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: '600',
-    marginBottom: 8,
-    color: '#333',
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textMuted,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   scanButton: {
-    backgroundColor: '#8966d8',
-    padding: 18,
-    borderRadius: 14,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  scanButtonGradient: {
+    paddingVertical: 18,
     paddingHorizontal: 32,
-    shadowColor: '#8966d8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.lg,
   },
   scanButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   footer: {
-    padding: 16,
+    padding: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
   clearButton: {
-    backgroundColor: '#EF4444',
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    padding: spacing.md,
+    borderRadius: radii.lg,
     alignItems: 'center',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   clearButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   spendingSummary: {
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: colors.glassBg,
+    margin: spacing.md,
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   spendingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   spendingTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#333',
+    color: colors.white,
   },
   filterButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: radii.sm,
     gap: 4,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   filterText: {
     fontSize: 14,
-    color: '#8966d8',
+    color: colors.primaryLight,
     fontWeight: '600',
   },
   spendingAmount: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#8966d8',
+    color: colors.accentGlow,
     marginBottom: 4,
   },
   spendingSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
   },
 });

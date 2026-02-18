@@ -11,7 +11,10 @@ import {
   Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { API_URL } from '@/utils/config';
+import { colors, gradients, spacing, radii, glowShadow, subtleShadow } from '@/utils/theme';
 
 interface GroupedPrice {
   barcode: string;
@@ -51,14 +54,22 @@ function CommunityCard({
     ? `${item.min_price} ${item.currency}`
     : `${item.min_price} - ${item.max_price} ${item.currency}`;
 
+  const priceSpread = item.max_price - item.min_price;
+  const isStablePrice = item.submission_count >= 2 && priceSpread <= 1;
+  const isPopular = item.submission_count >= 5;
+
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={[styles.card, subtleShadow]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.cardRow}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
         ) : (
           <View style={styles.productImagePlaceholder}>
-            <Text style={styles.noImageText}>Ingen bilde</Text>
+            <Ionicons name="image-outline" size={24} color={colors.textMuted} />
           </View>
         )}
         <View style={styles.cardContent}>
@@ -71,25 +82,43 @@ function CommunityCard({
               )}
             </View>
           </View>
+
+          {/* Price quality badges */}
+          {(isStablePrice || isPopular) && (
+            <View style={styles.badgeRow}>
+              {isStablePrice && (
+                <View style={styles.goodBadge}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.good} />
+                  <Text style={styles.goodBadgeText}>God pris</Text>
+                </View>
+              )}
+              {isPopular && (
+                <View style={styles.popularBadge}>
+                  <Ionicons name="flame" size={14} color="#FB923C" />
+                  <Text style={styles.popularBadgeText}>Populær</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           <View style={styles.cardDetails}>
             {item.stores.length > 0 && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>🏪</Text>
+                <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
                 <Text style={styles.detailText}>{item.stores.join(', ')}</Text>
               </View>
             )}
             {item.locations.length > 0 && (
               <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>📍</Text>
+                <Ionicons name="location-outline" size={14} color={colors.textMuted} />
                 <Text style={styles.detailText}>{item.locations.join(', ')}</Text>
               </View>
             )}
             <View style={styles.detailRow}>
-              <Text style={styles.detailIcon}>🕐</Text>
+              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
               <Text style={styles.detailText}>{formatDate(item.latest_submission)}</Text>
             </View>
           </View>
-          <Text style={styles.barcode}>Strekkode: {item.barcode}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -122,7 +151,6 @@ export default function CommunityScreen() {
       const newPrices = data.prices || [];
 
       if (append) {
-        // Check if we got new items
         if (newPrices.length <= submissions.length) {
           setHasMore(false);
         } else {
@@ -193,43 +221,53 @@ export default function CommunityScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <LinearGradient colors={[...gradients.screenBg]} style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={colors.primaryLight} />
         <Text style={styles.loadingText}>Laster fellesskapspriser...</Text>
-      </View>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
+      {/* Header */}
+      <LinearGradient colors={[...gradients.header]} style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <Text style={styles.backButtonText}>← Tilbake</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.white} />
+          <Text style={styles.backButtonText}>Tilbake</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Fellesskapspriser 🤝</Text>
+        <Text style={styles.title}>Fellesskapspriser</Text>
         <Text style={styles.subtitle}>
           {submissions.length} bidrag fra brukere
         </Text>
 
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Søk etter produkt, butikk eller sted..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          clearButtonMode="while-editing"
-        />
-      </View>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={18} color={colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Søk produkt, butikk eller sted..."
+            placeholderTextColor={colors.textMuted}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      </LinearGradient>
 
       <FlatList
         data={filteredSubmissions}
         renderItem={renderItem}
-        keyExtractor={(item) => item.barcode}
+        keyExtractor={(item, index) => `${item.barcode}-${item.min_price}-${index}`}
         contentContainerStyle={styles.list}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primaryLight}
+          />
         }
         onEndReached={() => {
           if (!loadingMore && hasMore && !searchQuery) {
@@ -240,18 +278,22 @@ export default function CommunityScreen() {
         ListFooterComponent={
           loadingMore ? (
             <View style={styles.loadingFooter}>
-              <ActivityIndicator size="small" color="#007AFF" />
+              <ActivityIndicator size="small" color={colors.primaryLight} />
               <Text style={styles.loadingFooterText}>Laster flere...</Text>
             </View>
           ) : !hasMore && submissions.length > 0 ? (
             <View style={styles.loadingFooter}>
-              <Text style={styles.endText}>Du har nådd slutten 🎉</Text>
+              <Text style={styles.endText}>Du har nådd slutten</Text>
             </View>
           ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyEmoji}>{searchQuery ? '🔍' : '📦'}</Text>
+            <Ionicons
+              name={searchQuery ? 'search' : 'cube-outline'}
+              size={64}
+              color={colors.textMuted}
+            />
             <Text style={styles.emptyText}>
               {searchQuery ? 'Ingen resultater' : 'Ingen priser ennå'}
             </Text>
@@ -261,83 +303,86 @@ export default function CommunityScreen() {
           </View>
         }
       />
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F5F7FA',
   },
   loadingText: {
-    marginTop: 16,
+    marginTop: spacing.md,
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
   },
   header: {
-    backgroundColor: '#8966d8',
-    padding: 20,
+    padding: spacing.lg,
     paddingTop: 60,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    paddingBottom: spacing.lg,
   },
   backButton: {
-    marginBottom: 16,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderWidth: 2,
-    borderColor: '#fff',
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm + 4,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: radii.sm,
     alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   backButtonText: {
-    fontSize: 18,
-    color: '#fff',
-    fontWeight: '700',
+    fontSize: 16,
+    color: colors.white,
+    fontWeight: '600',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.white,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
-    color: '#fff',
-    marginBottom: 16,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+  },
+  searchIcon: {
+    marginLeft: spacing.md,
   },
   searchInput: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 12,
+    flex: 1,
+    padding: spacing.md - 2,
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    color: colors.white,
   },
   list: {
-    padding: 16,
+    padding: spacing.md,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: colors.glassBg,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    marginBottom: spacing.sm + 4,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   cardRow: {
     flexDirection: 'row',
@@ -346,23 +391,20 @@ const styles = StyleSheet.create({
   productImage: {
     width: 64,
     height: 64,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#f0f0f0',
+    borderRadius: radii.sm,
+    marginRight: spacing.sm + 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
   productImagePlaceholder: {
     width: 64,
     height: 64,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#e8e8e8',
+    borderRadius: radii.sm,
+    marginRight: spacing.sm + 4,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  noImageText: {
-    fontSize: 10,
-    color: '#999',
-    textAlign: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   cardContent: {
     flex: 1,
@@ -372,80 +414,111 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: spacing.sm + 4,
   },
   productName: {
     flex: 1,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
-    marginRight: 12,
+    color: colors.white,
+    marginRight: spacing.sm + 4,
   },
   price: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#8966d8',
+    color: colors.accentGlow,
   },
   countBadge: {
     fontSize: 11,
-    color: '#666',
+    color: colors.textMuted,
     marginTop: 2,
     textAlign: 'right',
   },
+  badgeRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.sm + 2,
+  },
+  goodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(52, 211, 153, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(52, 211, 153, 0.25)',
+  },
+  goodBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.good,
+  },
+  popularBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(251, 146, 60, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.full,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.25)',
+  },
+  popularBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FB923C',
+  },
   cardDetails: {
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: spacing.sm + 4,
   },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  detailIcon: {
-    fontSize: 16,
-    marginRight: 8,
-    color: '#666',
+    gap: 6,
   },
   detailText: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
+    color: colors.textSecondary,
   },
   barcode: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 11,
+    color: colors.textMuted,
     fontFamily: 'monospace',
-    backgroundColor: '#f5f5f5',
-    padding: 6,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
     borderRadius: 4,
+    alignSelf: 'flex-start',
   },
   emptyContainer: {
     alignItems: 'center',
     paddingTop: 60,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
+    gap: spacing.sm,
   },
   emptyText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 8,
+    color: colors.textSecondary,
   },
   emptySubtext: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textMuted,
   },
   loadingFooter: {
-    padding: 20,
+    padding: spacing.lg,
     alignItems: 'center',
   },
   loadingFooterText: {
-    marginTop: 8,
+    marginTop: spacing.sm,
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
   },
   endText: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textMuted,
   },
 });

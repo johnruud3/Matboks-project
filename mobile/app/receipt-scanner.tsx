@@ -9,10 +9,13 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { evaluatePrice, submitPrice } from '@/services/api';
 import { saveToHistory } from '@/services/storage';
 import { PriceEvaluation } from '@/types';
+import { colors, gradients, spacing, radii, glowShadow } from '@/utils/theme';
 
 interface ReceiptItem {
   name: string;
@@ -34,14 +37,17 @@ export default function ReceiptScannerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
+      <LinearGradient colors={[...gradients.screenBg]} style={styles.permissionContainer}>
+        <Ionicons name="receipt-outline" size={64} color={colors.textMuted} />
         <Text style={styles.message}>
           Vi trenger tilgang til kameraet for å skanne kvitteringer
         </Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Gi tilgang</Text>
+        <TouchableOpacity style={[styles.grantButton, glowShadow]} onPress={requestPermission}>
+          <LinearGradient colors={[...gradients.primaryBtn]} style={styles.grantButtonGradient}>
+            <Text style={styles.grantButtonText}>Gi tilgang</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -52,25 +58,15 @@ export default function ReceiptScannerScreen() {
     setProcessing(true);
 
     try {
-      // Real AI receipt processing
-      // 1. Capture the image from camera
-      // 2. Send to your AI backend for OCR and product extraction
-      // 3. Parse structured response with product names and prices
-
-      // API call to your backend for receipt processing
       const API_URL = 'https://1price-project-production.up.railway.app';
 
-      // For now, we'll use a placeholder - you'd implement actual image capture
-      // and send it to your backend for AI processing
       const response = await fetch(`${API_URL}/api/receipt/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        // In real implementation, you'd send the captured image here
         body: JSON.stringify({
-          // image: capturedImageData,
-          placeholder: 'receipt_scan_request'
+          placeholder: 'receipt_scan_request',
         }),
       });
 
@@ -79,17 +75,16 @@ export default function ReceiptScannerScreen() {
       }
 
       const data = await response.json();
-      const receiptItems: ReceiptItem[] = data.items || [];
+      const items: ReceiptItem[] = data.items || [];
 
-      setReceiptItems(receiptItems);
+      setReceiptItems(items);
 
       Alert.alert(
         'Kvittering skannet!',
-        `Fant ${receiptItems.length} produkter på kvitteringen`,
+        `Fant ${items.length} produkter på kvitteringen`,
         [{ text: 'OK', style: 'default' }]
       );
     } catch (error) {
-      // Fallback to manual entry if AI scanning fails
       Alert.alert(
         'AI-skanning feilet',
         'Kunne ikke skanne kvitteringen automatisk. Vil du legge inn produktene manuelt?',
@@ -98,10 +93,9 @@ export default function ReceiptScannerScreen() {
           {
             text: 'Manuell innføring',
             onPress: () => {
-              // Navigate to manual entry or show manual input form
               router.push('/scanner');
-            }
-          }
+            },
+          },
         ]
       );
     } finally {
@@ -118,7 +112,7 @@ export default function ReceiptScannerScreen() {
     try {
       for (const item of receiptItems) {
         const evaluation = await evaluatePrice({
-          barcode: '', // Receipt items might not have barcodes
+          barcode: '',
           price: item.price,
           currency: 'NOK',
         });
@@ -132,11 +126,13 @@ export default function ReceiptScannerScreen() {
         [
           { text: 'Se historikk', onPress: () => router.push('/history') },
           {
-            text: 'Skann ny', onPress: () => {
+            text: 'Skann ny',
+            onPress: () => {
               setReceiptItems([]);
               setAnalyzing(false);
-            }, style: 'cancel'
-          }
+            },
+            style: 'cancel',
+          },
         ]
       );
     } catch (error) {
@@ -150,30 +146,37 @@ export default function ReceiptScannerScreen() {
   };
 
   const handleRemoveItem = (index: number) => {
-    setReceiptItems(prev => prev.filter((_, i) => i !== index));
+    setReceiptItems((prev) => prev.filter((_, i) => i !== index));
   };
 
   const getTotalAmount = () => {
-    return receiptItems.reduce((total, item) => total + (item.price * (item.quantity || 1)), 0);
+    return receiptItems.reduce(
+      (total, item) => total + item.price * (item.quantity || 1),
+      0
+    );
   };
 
+  // Results view
   if (receiptItems.length > 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
+      <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
+        <LinearGradient colors={[...gradients.header]} style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={20} color={colors.white} />
+            <Text style={styles.backButtonText}>Tilbake</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Kvitteringsresultater</Text>
-        </View>
+          <Text style={styles.headerTitle}>Kvitteringsresultater</Text>
+        </LinearGradient>
 
         <ScrollView style={styles.content}>
-          <View style={styles.summaryCard}>
+          {/* Summary glass card */}
+          <View style={[styles.glassCard, glowShadow]}>
             <Text style={styles.summaryTitle}>Kvitteringsoversikt</Text>
             <Text style={styles.summaryAmount}>{getTotalAmount().toFixed(2)} NOK</Text>
             <Text style={styles.summarySubtitle}>{receiptItems.length} produkter</Text>
           </View>
 
+          {/* Items list */}
           <View style={styles.itemsList}>
             {receiptItems.map((item, index) => (
               <View key={index} style={styles.itemCard}>
@@ -188,69 +191,74 @@ export default function ReceiptScannerScreen() {
                   style={styles.removeButton}
                   onPress={() => handleRemoveItem(index)}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                  <Ionicons name="trash-outline" size={20} color={colors.expensive} />
                 </TouchableOpacity>
               </View>
             ))}
           </View>
 
+          {/* Action buttons */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.analyzeButton, analyzing && styles.buttonDisabled]}
+              style={[styles.analyzeButton, glowShadow, analyzing && styles.buttonDisabled]}
               onPress={handleAnalyzeAll}
               disabled={analyzing}
             >
-              <Ionicons name="analytics-outline" size={24} color="#fff" style={{ marginRight: 8 }} />
-              <Text style={styles.analyzeButtonText}>
-                {analyzing ? 'Analyserer...' : 'Analyser alle'}
-              </Text>
+              <LinearGradient colors={[...gradients.primaryBtn]} style={styles.analyzeGradient}>
+                <Ionicons name="analytics-outline" size={24} color={colors.white} />
+                <Text style={styles.analyzeButtonText}>
+                  {analyzing ? 'Analyserer...' : 'Analyser alle'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.newScanButton}
               onPress={() => setReceiptItems([])}
             >
-              <Ionicons name="camera-outline" size={24} color="#8966d8" style={{ marginRight: 8 }} />
+              <Ionicons name="camera-outline" size={24} color={colors.primaryLight} />
               <Text style={styles.newScanButtonText}>Skann ny kvittering</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-      </View>
+      </LinearGradient>
     );
   }
 
+  // Camera view
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient colors={[...gradients.header]} style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={20} color={colors.white} />
+          <Text style={styles.backButtonText}>Tilbake</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Tilbake</Text>
-      </View>
+        <Text style={styles.headerTitle}>Skann kvittering</Text>
+      </LinearGradient>
 
       <CameraView
         style={styles.camera}
         onBarcodeScanned={handleReceiptScanned}
         barcodeScannerSettings={{
-          barcodeTypes: [], // We'll use image capture instead of barcode scanning
+          barcodeTypes: [],
         }}
       >
         <View style={styles.overlay}>
           <View style={styles.scanArea}>
-            <Ionicons name="receipt-outline" size={48} color="#fff" />
-            <Text style={styles.scanText}>
-              Plasser kvitteringen i rammen
-            </Text>
-            <Text style={styles.scanSubtext}>
-              Trykk for å skanne
-            </Text>
+            <Ionicons name="receipt-outline" size={48} color={colors.white} />
+            <Text style={styles.scanText}>Plasser kvitteringen i rammen</Text>
+            <Text style={styles.scanSubtext}>Trykk for å skanne</Text>
           </View>
+
+          {/* Capture button with glow ring */}
           <TouchableOpacity
-            style={styles.captureButton}
+            style={[styles.captureButton, glowShadow]}
             onPress={handleReceiptScanned}
             disabled={processing}
           >
-            <Ionicons name="camera" size={32} color="#fff" />
+            <View style={styles.captureInner}>
+              <Ionicons name="camera" size={32} color={colors.white} />
+            </View>
           </TouchableOpacity>
         </View>
       </CameraView>
@@ -261,23 +269,66 @@ export default function ReceiptScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: colors.deepBg,
+  },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+    gap: spacing.md,
+  },
+  message: {
+    textAlign: 'center',
+    paddingHorizontal: spacing.lg,
+    color: colors.textSecondary,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  grantButton: {
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  grantButtonGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: radii.lg,
+  },
+  grantButtonText: {
+    color: colors.white,
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: '700',
   },
   header: {
-    backgroundColor: '#8966d8',
     paddingTop: 60,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
   },
   backButton: {
-    marginRight: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: radii.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    marginRight: spacing.md,
   },
-  title: {
+  backButtonText: {
+    fontSize: 14,
+    color: colors.white,
+    fontWeight: '600',
+  },
+  headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#fff',
+    color: colors.white,
   },
   camera: {
     flex: 1,
@@ -291,111 +342,87 @@ const styles = StyleSheet.create({
   scanArea: {
     width: 320,
     height: 550,
-    borderWidth: 2,
-    borderColor: '#fff',
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: radii.lg,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     marginTop: 80,
+    gap: spacing.sm,
   },
   scanText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '600',
-    marginTop: 16,
     textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   scanSubtext: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
     fontSize: 14,
-    marginTop: 8,
   },
   captureButton: {
-    backgroundColor: '#8966d8',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    marginBottom: 50,
+    borderRadius: 9999,
+    padding: 4,
+    backgroundColor: 'rgba(124, 58, 237, 0.3)',
+    borderWidth: 3,
+    borderColor: colors.primary,
+  },
+  captureInner: {
+    backgroundColor: colors.primary,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 50,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  message: {
-    textAlign: 'center',
-    paddingHorizontal: 40,
-    color: '#333',
-    fontSize: 16,
-    marginBottom: 20,
-  },
-  button: {
-    backgroundColor: '#8966d8',
-    padding: 18,
-    borderRadius: 14,
-    marginHorizontal: 40,
-    shadowColor: '#8966d8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontSize: 16,
-    fontWeight: '700',
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: spacing.md,
   },
-  summaryCard: {
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 20,
+  glassCard: {
+    backgroundColor: colors.glassBg,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
   },
   summaryTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   summaryAmount: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
-    color: '#8966d8',
+    color: colors.accentGlow,
     marginBottom: 4,
   },
   summarySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textMuted,
   },
   itemsList: {
-    marginBottom: 20,
+    marginBottom: spacing.lg,
   },
   itemCard: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
+    backgroundColor: colors.glassBg,
+    padding: spacing.md,
+    borderRadius: radii.md,
+    marginBottom: spacing.sm + 4,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   itemInfo: {
     flex: 1,
@@ -403,60 +430,60 @@ const styles = StyleSheet.create({
   itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.white,
     marginBottom: 4,
   },
   itemPrice: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#8966d8',
+    color: colors.accentGlow,
   },
   itemQuantity: {
     fontSize: 12,
-    color: '#666',
+    color: colors.textMuted,
     marginTop: 2,
   },
   removeButton: {
-    padding: 8,
+    padding: spacing.sm,
   },
   actionButtons: {
-    gap: 12,
-    marginBottom: 20,
+    gap: spacing.sm + 4,
+    marginBottom: spacing.lg,
   },
   analyzeButton: {
-    backgroundColor: '#8966d8',
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  analyzeGradient: {
     padding: 18,
-    borderRadius: 14,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#8966d8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    gap: spacing.sm,
+    borderRadius: radii.lg,
   },
   analyzeButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
   },
   newScanButton: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: colors.glassBg,
+    padding: spacing.md,
+    borderRadius: radii.lg,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#8966d8',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    gap: spacing.sm,
   },
   newScanButtonText: {
-    color: '#8966d8',
+    color: colors.primaryLight,
     fontSize: 16,
     fontWeight: '600',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
 });

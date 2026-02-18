@@ -2,17 +2,20 @@ import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { colors, gradients, spacing, radii, glowShadow } from '@/utils/theme';
 
 export default function HomeScreen() {
   const router = useRouter();
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={[...gradients.home]} style={styles.container}>
       <StatusBar style="light" />
 
       <View style={styles.header}>
         <Image
-          source={require('../assets/Matboksen_Logo_Tekst_versjon.png')}
+          source={require('../assets/White-matboksen-logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
@@ -34,22 +37,28 @@ export default function HomeScreen() {
       />
 
       <View style={styles.buttonContainer}>
+        {/* Primary CTA - Glassmorphic with glow */}
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, glowShadow]}
           onPress={() => router.push('/scanner')}
+          activeOpacity={0.8}
         >
-          <View style={styles.buttonContent}>
-            <Ionicons name="camera-outline" size={24} color="#6744c9" />
-            <Text style={styles.primaryButtonText}>Skann produkt</Text>
-          </View>
+          <BlurView intensity={60} tint="light" style={styles.blurWrap}>
+            <View style={styles.buttonContent}>
+              <Ionicons name="camera-outline" size={24} color={colors.white} />
+              <Text style={styles.primaryButtonText}>Skann produkt</Text>
+            </View>
+          </BlurView>
         </TouchableOpacity>
 
+        {/* Secondary buttons - Glass treatment */}
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/community')}
+          activeOpacity={0.8}
         >
           <View style={styles.buttonContent}>
-            <MaterialIcons name="groups" size={20} color="#fff" />
+            <MaterialIcons name="groups" size={20} color={colors.white} />
             <Text style={styles.secondaryButtonText}>Fellesskapspriser</Text>
           </View>
         </TouchableOpacity>
@@ -57,9 +66,10 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/history')}
+          activeOpacity={0.8}
         >
           <View style={styles.buttonContent}>
-            <Ionicons name="bar-chart-outline" size={20} color="#fff" />
+            <Ionicons name="bar-chart-outline" size={20} color={colors.white} />
             <Text style={styles.secondaryButtonText}>Se historikk</Text>
           </View>
         </TouchableOpacity>
@@ -67,9 +77,10 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.secondaryButton}
           onPress={() => router.push('/receipt-scanner')}
+          activeOpacity={0.8}
         >
           <View style={styles.buttonContent}>
-            <Ionicons name="receipt-outline" size={20} color="#fff" />
+            <Ionicons name="receipt-outline" size={20} color={colors.white} />
             <Text style={styles.secondaryButtonText}>Skann kvittering</Text>
           </View>
         </TouchableOpacity>
@@ -77,23 +88,19 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Norsk markedskontekst • AI-drevet analyse
+          Norsk markedskontekst  ·  AI-drevet analyse
         </Text>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            av John-Kristian G. Ruud
-          </Text>
-        </View>
+        <Text style={styles.footerTextSmall}>
+          av John-Kristian G. Ruud
+        </Text>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#8966d8',
     justifyContent: 'space-between',
   },
   header: {
@@ -101,18 +108,16 @@ const styles = StyleSheet.create({
     marginTop: 60,
     paddingHorizontal: 20,
   },
-  title: {
-    fontSize: 52,
-    fontWeight: 'bold',
-    marginBottom: 12,
-    color: '#fff',
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 8,
+  logo: {
+    width: '110%',
+    marginTop: '-20%',
+    height: undefined,
+    aspectRatio: 1.47,
+    transform: [{ scale: 1.9 }],
   },
   subtitle: {
     fontSize: 12,
-    color: '2b2757',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     paddingHorizontal: 20,
     marginBottom: 3,
@@ -121,7 +126,7 @@ const styles = StyleSheet.create({
   },
   subtitle2: {
     fontSize: 12,
-    color: '2b2757',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     paddingHorizontal: 20,
     marginBottom: 3,
@@ -129,17 +134,11 @@ const styles = StyleSheet.create({
   },
   subtitle3: {
     fontSize: 12,
-    color: '2b2757',
+    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     paddingHorizontal: 20,
     marginBottom: 0,
     lineHeight: 12,
-  },
-  logo: {
-    width: '110%',
-    marginTop: '-20%',
-    height: undefined,
-    aspectRatio: 1.47,
   },
   logo2: {
     width: '170%',
@@ -148,50 +147,56 @@ const styles = StyleSheet.create({
     marginVertical: 60,
   },
   buttonContainer: {
-    gap: 12,
-    paddingHorizontal: 20,
-    marginBottom: 10,
+    gap: spacing.sm + 4,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
     marginTop: 'auto',
   },
   primaryButton: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 5,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  blurWrap: {
+    padding: spacing.md,
+    overflow: 'hidden',
   },
   primaryButtonText: {
-    color: '#6744c9',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
   },
   secondaryButton: {
-    backgroundColor: '#6744c9',
+    backgroundColor: colors.glassBg,
     padding: 14,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   secondaryButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   footer: {
     alignItems: 'center',
-    paddingBottom: 10,
+    paddingBottom: spacing.sm + 2,
+    paddingTop: spacing.sm,
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
+  },
+  footerTextSmall: {
+    fontSize: 12,
+    color: colors.textMuted,
+    marginTop: 2,
   },
   buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
 });

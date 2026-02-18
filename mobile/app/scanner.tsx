@@ -2,6 +2,10 @@ import { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, gradients, radii, spacing, glowShadow } from '@/utils/theme';
 
 export default function ScannerScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -14,14 +18,17 @@ export default function ScannerScreen() {
 
   if (!permission.granted) {
     return (
-      <View style={styles.container}>
+      <LinearGradient colors={[...gradients.screenBg]} style={styles.permissionContainer}>
+        <Ionicons name="camera-outline" size={64} color={colors.textMuted} />
         <Text style={styles.message}>
           Vi trenger tilgang til kameraet for å skanne strekkoder
         </Text>
-        <TouchableOpacity style={styles.button} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Gi tilgang</Text>
+        <TouchableOpacity style={[styles.grantButton, glowShadow]} onPress={requestPermission}>
+          <LinearGradient colors={[...gradients.primaryBtn]} style={styles.grantButtonGradient}>
+            <Text style={styles.grantButtonText}>Gi tilgang</Text>
+          </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
     );
   }
 
@@ -32,7 +39,7 @@ export default function ScannerScreen() {
 
     router.push({
       pathname: '/result',
-      params: { barcode: data }
+      params: { barcode: data },
     });
 
     setTimeout(() => {
@@ -50,7 +57,17 @@ export default function ScannerScreen() {
         }}
       >
         <View style={styles.overlay}>
+          {/* Scan area with glowing corners */}
           <View style={styles.scanArea}>
+            {/* Top-left corner */}
+            <View style={[styles.corner, styles.cornerTL]} />
+            {/* Top-right corner */}
+            <View style={[styles.corner, styles.cornerTR]} />
+            {/* Bottom-left corner */}
+            <View style={[styles.corner, styles.cornerBL]} />
+            {/* Bottom-right corner */}
+            <View style={[styles.corner, styles.cornerBR]} />
+
             <Text style={styles.scanText}>
               Plasser strekkoden i rammen
             </Text>
@@ -58,43 +75,54 @@ export default function ScannerScreen() {
         </View>
       </CameraView>
 
-      <View style={styles.footer}>
+      {/* Frosted glass footer */}
+      <BlurView intensity={80} tint="dark" style={styles.footer}>
         <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => router.back()}
         >
+          <Ionicons name="close" size={20} color={colors.white} />
           <Text style={styles.cancelButtonText}>Avbryt</Text>
         </TouchableOpacity>
-      </View>
+      </BlurView>
     </View>
   );
 }
+
+const CORNER_SIZE = 32;
+const CORNER_BORDER = 4;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
   },
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xxl,
+    gap: spacing.md,
+  },
   message: {
     textAlign: 'center',
-    paddingHorizontal: 40,
-    color: '#fff',
+    paddingHorizontal: spacing.lg,
+    color: colors.textSecondary,
     fontSize: 16,
-    marginBottom: 20,
+    lineHeight: 24,
   },
-  button: {
-    backgroundColor: '#8966d8',
-    padding: 18,
-    borderRadius: 14,
-    marginHorizontal: 40,
-    shadowColor: '#8966d8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  grantButton: {
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
   },
-  buttonText: {
-    color: '#fff',
+  grantButtonGradient: {
+    paddingVertical: 18,
+    paddingHorizontal: spacing.xxl,
+    borderRadius: radii.lg,
+  },
+  grantButtonText: {
+    color: colors.white,
     textAlign: 'center',
     fontSize: 16,
     fontWeight: '700',
@@ -111,30 +139,87 @@ const styles = StyleSheet.create({
   scanArea: {
     width: 300,
     height: 200,
-    borderWidth: 2,
-    borderColor: '#fff',
-    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  corner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: CORNER_BORDER,
+    borderLeftWidth: CORNER_BORDER,
+    borderColor: colors.primary,
+    borderTopLeftRadius: radii.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: CORNER_BORDER,
+    borderRightWidth: CORNER_BORDER,
+    borderColor: colors.primary,
+    borderTopRightRadius: radii.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: CORNER_BORDER,
+    borderLeftWidth: CORNER_BORDER,
+    borderColor: colors.primary,
+    borderBottomLeftRadius: radii.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: CORNER_BORDER,
+    borderRightWidth: CORNER_BORDER,
+    borderColor: colors.primary,
+    borderBottomRightRadius: radii.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
   },
   scanText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   footer: {
-    padding: 20,
-    backgroundColor: '#000',
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
   },
   cancelButton: {
-    backgroundColor: '#333',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    padding: spacing.md,
+    borderRadius: radii.md,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
   },
   cancelButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '600',
   },

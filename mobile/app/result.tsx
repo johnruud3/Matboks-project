@@ -8,11 +8,26 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  ViewStyle,
+  Image,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { evaluatePrice, submitPrice } from '@/services/api';
 import { saveToHistory } from '@/services/storage';
 import { PriceEvaluation } from '@/types';
+import { API_URL } from '@/utils/config';
+import {
+  colors,
+  gradients,
+  spacing,
+  radii,
+  glowShadow,
+  glowShadowGood,
+  glowShadowAverage,
+  glowShadowExpensive,
+} from '@/utils/theme';
 
 export default function ResultScreen() {
   const router = useRouter();
@@ -25,6 +40,19 @@ export default function ResultScreen() {
   const [contributed, setContributed] = useState(false);
   const [storeName, setStoreName] = useState('');
   const [location, setLocation] = useState('');
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!barcode) return;
+    let cancelled = false;
+    fetch(`${API_URL}/api/product/${barcode}`)
+      .then((res) => res.json())
+      .then((data: { imageUrl?: string | null }) => {
+        if (!cancelled && data.imageUrl) setImageUrl(data.imageUrl);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [barcode]);
 
   const handleEvaluate = async () => {
     if (!price || parseFloat(price) <= 0) {
@@ -81,75 +109,65 @@ export default function ResultScreen() {
     }
   };
 
-  const getEvaluationColor = (evaluation: string) => {
-    switch (evaluation) {
-      case 'good':
-        return '#34C759';
-      case 'average':
-        return '#FF9500';
-      case 'expensive':
-        return '#FF3B30';
-      default:
-        return '#999';
+  const getEvaluationColor = (eval_: string) => {
+    switch (eval_) {
+      case 'good': return colors.good;
+      case 'average': return colors.average;
+      case 'expensive': return colors.expensive;
+      default: return colors.textMuted;
     }
   };
 
-  const getEvaluationEmoji = (evaluation: string) => {
-    switch (evaluation) {
-      case 'good':
-        return '✅';
-      case 'average':
-        return '⚠️';
-      case 'expensive':
-        return '❌';
-      default:
-        return '❓';
+  const getEvaluationGlow = (eval_: string): ViewStyle => {
+    switch (eval_) {
+      case 'good': return glowShadowGood;
+      case 'average': return glowShadowAverage;
+      case 'expensive': return glowShadowExpensive;
+      default: return {};
     }
   };
 
-  const getEvaluationLabel = (evaluation: string) => {
-    switch (evaluation) {
-      case 'good':
-        return 'God pris';
-      case 'average':
-        return 'Gjennomsnittlig';
-      case 'expensive':
-        return 'Dyr';
-      default:
-        return 'Ukjent';
+  const getEvaluationEmoji = (eval_: string) => {
+    switch (eval_) {
+      case 'good': return 'checkmark-circle';
+      case 'average': return 'alert-circle';
+      case 'expensive': return 'close-circle';
+      default: return 'help-circle';
+    }
+  };
+
+  const getEvaluationLabel = (eval_: string) => {
+    switch (eval_) {
+      case 'good': return 'God pris';
+      case 'average': return 'Gjennomsnittlig';
+      case 'expensive': return 'Dyr';
+      default: return 'Ukjent';
     }
   };
 
   const getConfidenceColor = (confidence: string) => {
     switch (confidence) {
-      case 'high':
-        return '#34C759';
-      case 'medium':
-        return '#FF9500';
-      case 'low':
-        return '#FF3B30';
-      default:
-        return '#999';
+      case 'high': return colors.good;
+      case 'medium': return colors.average;
+      case 'low': return colors.expensive;
+      default: return colors.textMuted;
     }
   };
 
   const getConfidenceLabel = (confidence: string) => {
     switch (confidence) {
-      case 'high':
-        return 'Mye data';
-      case 'medium':
-        return 'Noe data';
-      case 'low':
-        return 'Lite data';
-      default:
-        return 'Ukjent';
+      case 'high': return 'Mye data';
+      case 'medium': return 'Noe data';
+      case 'low': return 'Lite data';
+      default: return 'Ukjent';
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.barcodeSection}>
+    <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {/* Barcode section */}
+        <View style={styles.glassCard}>
           <Text style={styles.label}>Strekkode</Text>
           <Text style={styles.barcode}>{barcode}</Text>
         </View>
@@ -160,6 +178,7 @@ export default function ResultScreen() {
             <TextInput
               style={styles.input}
               placeholder="f.eks. 29.90"
+              placeholderTextColor={colors.textMuted}
               keyboardType="decimal-pad"
               value={price}
               onChangeText={setPrice}
@@ -167,40 +186,61 @@ export default function ResultScreen() {
             />
 
             <TouchableOpacity
-              style={[styles.evaluateButton, loading && styles.buttonDisabled]}
+              style={[styles.evaluateButton, glowShadow, loading && styles.buttonDisabled]}
               onPress={handleEvaluate}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.evaluateButtonText}>Evaluer pris</Text>
-              )}
+              <LinearGradient
+                colors={[...gradients.primaryBtn]}
+                style={styles.evaluateButtonGradient}
+              >
+                {loading ? (
+                  <ActivityIndicator color={colors.white} />
+                ) : (
+                  <Text style={styles.evaluateButtonText}>Evaluer pris</Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
 
         {evaluation && (
           <View style={styles.resultSection}>
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>{evaluation.product.name}</Text>
-              {evaluation.product.brand && (
-                <Text style={styles.productBrand}>{evaluation.product.brand}</Text>
-              )}
-              {evaluation.product.category && (
-                <Text style={styles.productCategory}>{evaluation.product.category}</Text>
-              )}
+            {/* Product info with image */}
+            <View style={styles.glassCard}>
+              <View style={styles.productRow}>
+                {imageUrl ? (
+                  <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
+                ) : (
+                  <View style={styles.productImagePlaceholder}>
+                    <Ionicons name="image-outline" size={28} color={colors.textMuted} />
+                  </View>
+                )}
+                <View style={styles.productInfo}>
+                  <Text style={styles.productName}>{evaluation.product.name}</Text>
+                  {evaluation.product.brand && (
+                    <Text style={styles.productBrand}>{evaluation.product.brand}</Text>
+                  )}
+                  {evaluation.product.category && (
+                    <Text style={styles.productCategory}>{evaluation.product.category}</Text>
+                  )}
+                </View>
+              </View>
             </View>
 
+            {/* Evaluation card with glow */}
             <View
               style={[
                 styles.evaluationCard,
+                getEvaluationGlow(evaluation.evaluation),
                 { borderColor: getEvaluationColor(evaluation.evaluation) },
               ]}
             >
-              <Text style={styles.evaluationEmoji}>
-                {getEvaluationEmoji(evaluation.evaluation)}
-              </Text>
+              <Ionicons
+                name={getEvaluationEmoji(evaluation.evaluation) as any}
+                size={56}
+                color={getEvaluationColor(evaluation.evaluation)}
+              />
               <Text
                 style={[
                   styles.evaluationLabel,
@@ -212,7 +252,8 @@ export default function ResultScreen() {
               <Text style={styles.priceText}>{evaluation.price} NOK</Text>
             </View>
 
-            <View style={styles.explanationCard}>
+            {/* Explanation card */}
+            <View style={styles.glassCard}>
               <View style={styles.explanationHeader}>
                 <Text style={styles.explanationTitle}>Vurdering</Text>
                 <View style={[styles.confidenceBadge, { backgroundColor: getConfidenceColor(evaluation.confidence) }]}>
@@ -222,14 +263,16 @@ export default function ResultScreen() {
               <Text style={styles.explanationText}>{evaluation.explanation}</Text>
               {evaluation.confidence === 'low' && (
                 <Text style={styles.disclaimerText}>
-                  ⚠️ Begrenset data tilgjengelig. Evalueringen er basert på estimater.
+                  Begrenset data tilgjengelig. Evalueringen er basert på estimater.
                 </Text>
               )}
             </View>
 
+            {/* Contribute section */}
             {!contributed && (
-              <View style={styles.contributeSection}>
-                <Text style={styles.contributeTitle}>Bidra til fellesskapet 🤝</Text>
+              <View style={[styles.glassCard, styles.contributeCard]}>
+                <Ionicons name="people" size={24} color={colors.primaryLight} />
+                <Text style={styles.contributeTitle}>Bidra til fellesskapet</Text>
                 <Text style={styles.contributeDescription}>
                   Hjelp andre ved å dele denne prisen. Jo flere som bidrar, jo bedre blir evalueringene!
                 </Text>
@@ -237,6 +280,7 @@ export default function ResultScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Butikk (valgfritt)"
+                  placeholderTextColor={colors.textMuted}
                   value={storeName}
                   onChangeText={setStoreName}
                 />
@@ -244,6 +288,7 @@ export default function ResultScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Sted (valgfritt)"
+                  placeholderTextColor={colors.textMuted}
                   value={location}
                   onChangeText={setLocation}
                 />
@@ -254,7 +299,7 @@ export default function ResultScreen() {
                   disabled={submitting}
                 >
                   {submitting ? (
-                    <ActivityIndicator color="#fff" />
+                    <ActivityIndicator color={colors.white} />
                   ) : (
                     <Text style={styles.contributeButtonText}>Bidra med pris</Text>
                   )}
@@ -263,265 +308,255 @@ export default function ResultScreen() {
             )}
 
             {contributed && (
-              <View style={styles.thanksCard}>
-                <Text style={styles.thanksEmoji}>🎉</Text>
+              <View style={[styles.glassCard, styles.thanksCard]}>
+                <Ionicons name="checkmark-circle" size={48} color={colors.good} />
                 <Text style={styles.thanksText}>Takk for ditt bidrag!</Text>
                 <Text style={styles.thanksSubtext}>Du hjelper andre med å ta bedre kjøpsbeslutninger.</Text>
               </View>
             )}
 
             <TouchableOpacity
-              style={styles.newScanButton}
+              style={[styles.newScanButton, glowShadow]}
               onPress={() => router.push('/scanner')}
             >
-              <Text style={styles.newScanButtonText}>Skann nytt produkt</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.homeButton}
-              onPress={() => router.push('/scanner')}
-            >
+              <LinearGradient
+                colors={[...gradients.primaryBtn]}
+                style={styles.newScanGradient}
+              >
+                <Ionicons name="camera-outline" size={20} color={colors.white} />
+                <Text style={styles.newScanButtonText}>Skann nytt produkt</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
-    padding: 20,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
-  barcodeSection: {
-    marginBottom: 24,
+  glassCard: {
+    backgroundColor: colors.glassBg,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
   },
   label: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: spacing.sm,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   barcode: {
     fontSize: 18,
     fontFamily: 'monospace',
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8,
+    color: colors.white,
   },
   inputSection: {
-    marginBottom: 24,
+    marginBottom: spacing.lg,
   },
   input: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 24,
-    marginBottom: 16,
+    borderColor: colors.glassBorder,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    fontSize: 20,
+    color: colors.white,
+    marginBottom: spacing.md,
   },
   evaluateButton: {
-    backgroundColor: '#8966d8',
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  evaluateButtonGradient: {
     padding: 18,
-    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#8966d8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    borderRadius: radii.lg,
   },
   evaluateButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 18,
     fontWeight: '700',
   },
   buttonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   resultSection: {
-    marginTop: 24,
+    marginTop: spacing.sm,
+  },
+  productRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  productImage: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.md,
+    marginRight: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  productImagePlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.md,
+    marginRight: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   productInfo: {
-    backgroundColor: '#f9f9f9',
-    padding: 16,
-    borderRadius: 12,
+    flex: 1,
   },
   productName: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: colors.white,
     marginBottom: 4,
   },
   productBrand: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   productCategory: {
     fontSize: 14,
-    color: '#999',
+    color: colors.textMuted,
   },
   evaluationCard: {
-    backgroundColor: '#fff',
-    padding: 28,
-    borderRadius: 20,
+    backgroundColor: colors.glassBg,
+    padding: spacing.xl,
+    borderRadius: radii.xl,
     alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  evaluationEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
+    marginBottom: spacing.md,
+    borderWidth: 2,
   },
   evaluationLabel: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
   },
   priceText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#000',
-  },
-  explanationCard: {
-    backgroundColor: '#fff',
-    padding: 22,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    color: colors.white,
   },
   explanationHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing.sm,
   },
   explanationTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: colors.white,
   },
   confidenceBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: radii.full,
   },
   confidenceText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#fff',
+    color: colors.white,
   },
   explanationText: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#666',
+    color: colors.textSecondary,
   },
   disclaimerText: {
     fontSize: 13,
-    color: '#FF9500',
-    marginTop: 12,
+    color: colors.average,
+    marginTop: spacing.sm + 4,
     fontStyle: 'italic',
   },
-  newScanButton: {
-    backgroundColor: '#d9c8f8',
-    padding: 18,
-    borderRadius: 14,
+  contributeCard: {
     alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#d9c8f8',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  newScanButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  homeButton: {
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-  },
-  homeButtonText: {
-    color: '#d9c8f8',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  contributeSection: {
-    backgroundColor: '#f0f8ff',
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: 'rgba(124, 58, 237, 0.3)',
   },
   contributeTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#007AFF',
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+    color: colors.primaryLight,
   },
   contributeDescription: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
     lineHeight: 20,
+    textAlign: 'center',
   },
   contributeButton: {
-    backgroundColor: '#10B981',
+    backgroundColor: colors.success,
     padding: 18,
-    borderRadius: 14,
+    borderRadius: radii.lg,
     alignItems: 'center',
-    marginTop: 16,
-    shadowColor: '#10B981',
+    width: '100%',
+    shadowColor: colors.success,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   contributeButtonText: {
-    color: '#fff',
+    color: colors.white,
     fontSize: 16,
     fontWeight: '700',
   },
   thanksCard: {
-    backgroundColor: '#f0fff4',
-    padding: 24,
-    borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#34C759',
-  },
-  thanksEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
+    borderColor: 'rgba(52, 211, 153, 0.3)',
   },
   thanksText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#34C759',
+    color: colors.good,
+    marginTop: spacing.sm,
     marginBottom: 4,
   },
   thanksSubtext: {
     fontSize: 14,
-    color: '#666',
+    color: colors.textSecondary,
     textAlign: 'center',
+  },
+  newScanButton: {
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    marginTop: spacing.sm,
+  },
+  newScanGradient: {
+    padding: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: radii.lg,
+  },
+  newScanButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

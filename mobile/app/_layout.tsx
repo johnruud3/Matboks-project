@@ -1,15 +1,19 @@
 import { Stack } from 'expo-router';
+import { colors } from '@/utils/theme';
 
 export default function RootLayout() {
   return (
     <Stack
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#8966d8',
+          backgroundColor: colors.primary,
         },
-        headerTintColor: '#fff',
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: 'bold',
+        },
+        contentStyle: {
+          backgroundColor: colors.deepBg,
         },
       }}
     >
@@ -17,48 +21,48 @@ export default function RootLayout() {
         name="index"
         options={{
           title: 'Pris-Appen',
-          headerShown: false
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="scanner"
         options={{
           title: 'Skann strekkode',
-          headerShown: true
+          headerShown: true,
         }}
       />
       <Stack.Screen
         name="result"
         options={{
           title: 'Prisvurdering',
-          headerShown: true
+          headerShown: true,
         }}
       />
       <Stack.Screen
         name="history"
         options={{
           title: 'Historikk',
-          headerShown: true
+          headerShown: true,
         }}
       />
       <Stack.Screen
         name="community"
         options={{
           title: 'Fellesskapspriser',
-          headerShown: false
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="product-detail"
         options={{
-          headerShown: false
+          headerShown: false,
         }}
       />
       <Stack.Screen
         name="receipt-scanner"
         options={{
           title: 'Skann kvittering',
-          headerShown: false
+          headerShown: false,
         }}
       />
     </Stack>
