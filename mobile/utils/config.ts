@@ -1,3 +1,7 @@
+// mobile/utils/config.ts
 import Constants from 'expo-constants';
 
-export const API_URL = Constants.expoConfig?.extra?.apiUrl || 'http://localhost:3000';
+const DEV_API = `http://${Constants.expoConfig?.hostUri?.split(':')[0]}:3000`;
+const PROD_API = Constants.expoConfig?.extra?.apiUrl;
+
+export const API_URL = __DEV__ ? DEV_API : PROD_API;

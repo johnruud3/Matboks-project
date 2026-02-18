@@ -57,6 +57,20 @@ pris-appen/
 - npm or yarn
 - Expo Go app (iOS/Android)
 
+### Mobile App Setup (Testing enviroment)
+
+```bash
+cd mobile
+npx expo start
+```
+
+### Backend Setup
+
+```bash
+cd backend
+npm run dev
+```
+
 ### Mobile App Setup
 
 ```bash

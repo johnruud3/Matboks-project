@@ -1,6 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import evaluateRouter from './routes/evaluate.js';
 import pricesRouter from './routes/prices.js';
 import groupedPricesRouter from './routes/groupedPrices.js';
@@ -8,8 +8,6 @@ import productRouter from './routes/product.js';
 import productSearchRouter from './routes/productSearch.js';
 import adminRouter from './routes/admin.js';
 import receiptRouter from './routes/receipt.js';
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;

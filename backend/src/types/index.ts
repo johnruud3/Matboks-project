@@ -4,6 +4,8 @@ export interface Product {
   category?: string;
   imageUrl?: string;
   currentPrice?: number;
+  storeName?: string;
+  storeLogo?: string;
 }
 
 export interface EvaluateRequest {

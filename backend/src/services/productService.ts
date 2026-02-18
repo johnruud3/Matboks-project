@@ -10,6 +10,13 @@ interface KassalProduct {
   description: string | null;
   current_price: { price: number; unit_price: number | null; date: string } | number | null;
   category?: { id: number; name: string }[];
+  store?: { name: string; code: string; url: string; logo: string | null };
+}
+
+function extractPrice(cp: KassalProduct['current_price']): number | null {
+  if (cp == null) return null;
+  if (typeof cp === 'number') return cp;
+  return cp.price ?? null;
 }
 
 interface KassalEanResponse {
@@ -39,18 +46,30 @@ export async function lookupProduct(barcode: string): Promise<Product> {
     }
 
     const data = await response.json() as KassalEanResponse;
-    const product = data.data?.products?.[0];
+    const products = data.data?.products || [];
 
-    if (product) {
-      const category = product.category?.find((c) => c.name)?.name;
+    if (products.length > 0) {
+      const first = products[0];
+      const category = first.category?.find((c) => c.name)?.name;
+
+      let cheapest = first;
+      let cheapestPrice = extractPrice(first.current_price);
+      for (const p of products) {
+        const price = extractPrice(p.current_price);
+        if (price != null && (cheapestPrice == null || price < cheapestPrice)) {
+          cheapest = p;
+          cheapestPrice = price;
+        }
+      }
+
       return {
-        name: product.name || 'Ukjent produkt',
-        brand: product.brand || undefined,
-        category: category || product.vendor || undefined,
-        imageUrl: product.image || undefined,
-        currentPrice: typeof product.current_price === 'object' && product.current_price
-          ? product.current_price.price
-          : product.current_price || undefined,
+        name: first.name || 'Ukjent produkt',
+        brand: first.brand || undefined,
+        category: category || first.vendor || undefined,
+        imageUrl: first.image || undefined,
+        currentPrice: cheapestPrice || undefined,
+        storeName: cheapest.store?.name || undefined,
+        storeLogo: cheapest.store?.logo || undefined,
       };
     }
 

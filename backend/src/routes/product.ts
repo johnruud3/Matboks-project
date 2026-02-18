@@ -14,9 +14,11 @@ router.get('/:barcode', async (req: Request, res: Response) => {
     res.json({
       imageUrl: product.imageUrl ?? null,
       currentPrice: product.currentPrice ?? null,
+      storeName: product.storeName ?? null,
+      storeLogo: product.storeLogo ?? null,
     });
   } catch (error) {
-    res.status(500).json({ imageUrl: null, currentPrice: null });
+    res.status(500).json({ imageUrl: null, currentPrice: null, storeName: null, storeLogo: null });
   }
 });
 

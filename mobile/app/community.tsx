@@ -67,6 +67,8 @@ function UnifiedProductCard({
 }) {
   const [fetchedImage, setFetchedImage] = useState<string | null>(null);
   const [fetchedStorePrice, setFetchedStorePrice] = useState<number | null>(null);
+  const [fetchedStoreName, setFetchedStoreName] = useState<string | null>(null);
+  const [fetchedStoreLogo, setFetchedStoreLogo] = useState<string | null>(null);
 
   const needsLookup = !item.image || item.kassalPrice == null;
   useEffect(() => {
@@ -74,10 +76,12 @@ function UnifiedProductCard({
     let cancelled = false;
     fetch(`${API_URL}/api/product/${item.barcode}`)
       .then((res) => res.json())
-      .then((data: { imageUrl?: string | null; currentPrice?: number | null }) => {
+      .then((data: { imageUrl?: string | null; currentPrice?: number | null; storeName?: string | null; storeLogo?: string | null }) => {
         if (cancelled) return;
         if (!item.image && data.imageUrl) setFetchedImage(data.imageUrl);
         if (item.kassalPrice == null && data.currentPrice) setFetchedStorePrice(data.currentPrice);
+        if (data.storeName) setFetchedStoreName(data.storeName);
+        if (data.storeLogo) setFetchedStoreLogo(data.storeLogo);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -85,6 +89,8 @@ function UnifiedProductCard({
 
   const displayImage = item.image || fetchedImage;
   const storePrice = item.kassalPrice ?? fetchedStorePrice;
+  const storeName = item.kassalStore ?? fetchedStoreName;
+  const storeLogo = item.kassalStoreLogo ?? fetchedStoreLogo;
 
   const hasCommunity = item.communityMin != null;
   const hasKassal = storePrice != null;
@@ -124,15 +130,15 @@ function UnifiedProductCard({
           <View style={styles.priceSection}>
             {hasKassal && (
               <View style={styles.kassalRow}>
-                {item.kassalStoreLogo ? (
-                  <SvgUri uri={item.kassalStoreLogo} width={18} height={18} />
+                {storeLogo ? (
+                  <SvgUri uri={storeLogo} width={18} height={18} />
                 ) : (
                   <Ionicons name="pricetag" size={13} color={colors.primaryLight} />
                 )}
                 <Text style={styles.kassalLabel}>Billigste butikkpris</Text>
                 <Text style={styles.kassalValue}>{storePrice} {item.currency}</Text>
-                {item.kassalStore && (
-                  <Text style={styles.kassalStore}>{item.kassalStore}</Text>
+                {storeName && (
+                  <Text style={styles.kassalStore}>{storeName}</Text>
                 )}
               </View>
             )}
