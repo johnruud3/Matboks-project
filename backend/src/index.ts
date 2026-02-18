@@ -5,6 +5,7 @@ import evaluateRouter from './routes/evaluate.js';
 import pricesRouter from './routes/prices.js';
 import groupedPricesRouter from './routes/groupedPrices.js';
 import productRouter from './routes/product.js';
+import productSearchRouter from './routes/productSearch.js';
 import adminRouter from './routes/admin.js';
 import receiptRouter from './routes/receipt.js';
 
@@ -32,6 +33,7 @@ app.use('/api', evaluateRouter);
 app.use('/api/prices', pricesRouter);
 app.use('/api/prices', groupedPricesRouter);
 app.use('/api/product', productRouter);
+app.use('/api/products', productSearchRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/receipt', receiptRouter);
 
