@@ -124,7 +124,7 @@ export default function ReceiptScannerScreen() {
         'Suksess!',
         `Analyserte og lagret ${receiptItems.length} produkter i historikken`,
         [
-          { text: 'Se historikk', onPress: () => router.push('/history') },
+          { text: 'OK', onPress: () => router.push('/') },
           {
             text: 'Skann ny',
             onPress: () => {

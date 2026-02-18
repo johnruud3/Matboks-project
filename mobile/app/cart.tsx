@@ -1,97 +1,124 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
+  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { SvgUri } from 'react-native-svg';
 import { useCart } from '@/context/CartContext';
 import { CartItem } from '@/types';
+import { API_URL } from '@/utils/config';
 import { colors, gradients, spacing, radii, glowShadow } from '@/utils/theme';
+import { UnifiedProductCard, getBestPrice, type UnifiedFeedItem } from '@/components/UnifiedProductCard';
+import { useUserLocation } from '@/hooks/useUserLocation';
 
-function CartItemCard({
-  item,
-  onRemove,
-  onPress,
-}: {
-  item: CartItem;
-  onRemove: () => void;
-  onPress: () => void;
-}) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('nb-NO', {
-      day: 'numeric',
-      month: 'short',
-    });
+function buildUnifiedFromCartAndApi(
+  cartItem: CartItem,
+  product: { imageUrl?: string | null; currentPrice?: number | null; storeName?: string | null; storeLogo?: string | null; communityStats?: { minPrice: number; maxPrice: number; submissionCount: number } | null },
+  recent: { prices: Array<{ store_name?: string; location?: string; price: number; submitted_at: string }> }
+): UnifiedFeedItem {
+  const entries = (recent.prices || []).map((p) => ({
+    store_name: p.store_name ?? '',
+    location: p.location ?? '',
+    price: p.price,
+    submitted_at: p.submitted_at,
+  }));
+  const communityMin = product.communityStats?.minPrice ?? (entries.length ? Math.min(...entries.map((e) => e.price)) : null);
+  const communityMax = product.communityStats?.maxPrice ?? (entries.length ? Math.max(...entries.map((e) => e.price)) : null);
+  return {
+    barcode: cartItem.barcode,
+    name: cartItem.name,
+    image: cartItem.image || product.imageUrl || null,
+    kassalPrice: product.currentPrice ?? null,
+    kassalStore: product.storeName ?? null,
+    kassalStoreLogo: product.storeLogo ?? null,
+    communityMin,
+    communityMax,
+    submissionCount: product.communityStats?.submissionCount ?? entries.length,
+    currency: cartItem.currency,
+    stores: [...new Set(entries.map((e) => e.store_name).filter(Boolean))],
+    locations: [...new Set(entries.map((e) => e.location).filter(Boolean))],
+    entries,
+    latestSubmission: entries[0]?.submitted_at ?? null,
+    brand: null,
   };
-
-  return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.cardContent}>
-        {item.image ? (
-          <Image source={{ uri: item.image }} style={styles.productImage} />
-        ) : (
-          <View style={styles.placeholderImage}>
-            <Ionicons name="cube-outline" size={28} color={colors.textMuted} />
-          </View>
-        )}
-
-        <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
-
-          <View style={styles.storeRow}>
-            {item.storeLogo ? (
-              <SvgUri uri={item.storeLogo} width={16} height={16} />
-            ) : (
-              <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
-            )}
-            <Text style={styles.storeName}>{item.storeName}</Text>
-          </View>
-
-          {item.location && (
-            <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={12} color={colors.textMuted} />
-              <Text style={styles.locationText}>{item.location}</Text>
-            </View>
-          )}
-
-          <Text style={styles.addedDate}>Lagt til {formatDate(item.addedAt)}</Text>
-        </View>
-
-        <View style={styles.priceSection}>
-          <Text style={styles.price}>{item.price} {item.currency}</Text>
-          <TouchableOpacity
-            style={styles.removeButton}
-            onPress={onRemove}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="trash-outline" size={20} color={colors.danger} />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
 }
 
 export default function CartScreen() {
   const router = useRouter();
+  const { city: userCity } = useUserLocation();
   const { cart, removeFromCart, clearCart, cartCount } = useCart();
-  const [removing, setRemoving] = useState<string | null>(null);
+  const [resolvedItems, setResolvedItems] = useState<Record<string, UnifiedFeedItem>>({});
+  const [loading, setLoading] = useState(true);
+  const prevCartBarcodesRef = useRef<Set<string>>(new Set());
+
+  const formatDate = useCallback((dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' });
+  }, []);
+
+  useEffect(() => {
+    if (cart.length === 0) {
+      setResolvedItems({});
+      setLoading(false);
+      prevCartBarcodesRef.current = new Set();
+      return;
+    }
+    const currentBarcodes = new Set(cart.map((item) => item.barcode));
+    const prevBarcodes = prevCartBarcodesRef.current;
+    const isOnlyRemovals = currentBarcodes.size <= prevBarcodes.size && [...currentBarcodes].every((b) => prevBarcodes.has(b));
+    const allResolved = [...currentBarcodes].every((b) => resolvedItems[b]);
+
+    if (isOnlyRemovals && allResolved) {
+      setResolvedItems((prev) => {
+        const next: Record<string, UnifiedFeedItem> = {};
+        currentBarcodes.forEach((b) => {
+          if (prev[b]) next[b] = prev[b];
+        });
+        return next;
+      });
+      prevCartBarcodesRef.current = currentBarcodes;
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    prevCartBarcodesRef.current = currentBarcodes;
+    const controller = new AbortController();
+    const done = async () => {
+      const next: Record<string, UnifiedFeedItem> = {};
+      for (const item of cart) {
+        try {
+          const [productRes, recentRes] = await Promise.all([
+            fetch(`${API_URL}/api/product/${item.barcode}`, { signal: controller.signal }),
+            fetch(`${API_URL}/api/prices/recent/${item.barcode}?limit=50`, { signal: controller.signal }),
+          ]);
+          const product = await productRes.json();
+          const recent = await recentRes.json();
+          next[item.barcode] = buildUnifiedFromCartAndApi(item, product, recent);
+        } catch {
+          next[item.barcode] = buildUnifiedFromCartAndApi(item, {}, { prices: [] });
+        }
+      }
+      setResolvedItems(next);
+    };
+    done().finally(() => setLoading(false));
+    return () => controller.abort();
+  }, [cart]);
 
   const handleRemove = async (barcode: string) => {
-    setRemoving(barcode);
+    setResolvedItems((prev) => {
+      const next = { ...prev };
+      delete next[barcode];
+      return next;
+    });
     await removeFromCart(barcode);
-    setRemoving(null);
   };
 
   const handleClearCart = () => {
@@ -100,23 +127,15 @@ export default function CartScreen() {
       'Er du sikker på at du vil fjerne alle produkter?',
       [
         { text: 'Avbryt', style: 'cancel' },
-        {
-          text: 'Tøm',
-          style: 'destructive',
-          onPress: () => clearCart(),
-        },
+        { text: 'Tøm', style: 'destructive', onPress: () => clearCart() },
       ]
     );
   };
 
-  const handleProductPress = (item: CartItem) => {
-    router.push({
-      pathname: '/product-detail',
-      params: { barcode: item.barcode, name: encodeURIComponent(item.name) },
-    });
-  };
-
-  const totalPrice = cart.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = Object.values(resolvedItems).reduce(
+    (sum, item) => sum + getBestPrice(item, item.kassalPrice),
+    0
+  );
 
   return (
     <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
@@ -153,18 +172,35 @@ export default function CartScreen() {
             </LinearGradient>
           </TouchableOpacity>
         </View>
+      ) : loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primaryLight} />
+          <Text style={styles.loadingText}>Laster priser...</Text>
+        </View>
       ) : (
         <>
           <FlatList
             data={cart}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <CartItemCard
-                item={item}
-                onRemove={() => handleRemove(item.barcode)}
-                onPress={() => handleProductPress(item)}
-              />
-            )}
+            renderItem={({ item }) => {
+              const unified = resolvedItems[item.barcode];
+              if (!unified) return <View style={styles.cardPlaceholder}><ActivityIndicator size="small" color={colors.primaryLight} /></View>;
+              return (
+                <UnifiedProductCard
+                  item={unified}
+                  formatDate={formatDate}
+                  userCity={userCity}
+                  mode="cart"
+                  onRemove={() => handleRemove(item.barcode)}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/product-detail',
+                      params: { barcode: item.barcode, name: encodeURIComponent(item.name) },
+                    })
+                  }
+                />
+              );
+            }}
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           />
@@ -264,84 +300,24 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+  },
+  cardPlaceholder: {
+    padding: spacing.lg,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
   listContent: {
     padding: spacing.md,
     paddingBottom: 180,
-  },
-  card: {
-    backgroundColor: colors.glassBg,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.glassBorder,
-    marginBottom: spacing.sm,
-    overflow: 'hidden',
-  },
-  cardContent: {
-    flexDirection: 'row',
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  productImage: {
-    width: 60,
-    height: 60,
-    borderRadius: radii.sm,
-    backgroundColor: colors.white,
-  },
-  placeholderImage: {
-    width: 60,
-    height: 60,
-    borderRadius: radii.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  productInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  productName: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: colors.white,
-    lineHeight: 20,
-  },
-  storeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 2,
-  },
-  storeName: {
-    fontSize: 13,
-    color: colors.textSecondary,
-  },
-  locationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  locationText: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  addedDate: {
-    fontSize: 10,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  priceSection: {
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-  },
-  price: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: colors.accentGlow,
-  },
-  removeButton: {
-    padding: spacing.sm,
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
-    borderRadius: radii.sm,
   },
   footer: {
     position: 'absolute',

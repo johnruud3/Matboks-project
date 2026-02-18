@@ -19,33 +19,7 @@ import { API_URL } from '@/utils/config';
 import { colors, gradients, spacing, radii, subtleShadow } from '@/utils/theme';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useCart } from '@/context/CartContext';
-
-// Store name to logo URL mapping
-const STORE_LOGOS: Record<string, string> = {
-  'KIWI': 'https://kassal.app/logos/Kiwi.svg',
-  'Meny': 'https://kassal.app/logos/Meny.svg',
-  'SPAR': 'https://kassal.app/logos/Spar.svg',
-  'Coop Extra': 'https://kassal.app/logos/Coop%20Extra.svg',
-  'Coop Prix': 'https://kassal.app/logos/Coop%20Prix.svg',
-  'Coop Mega': 'https://kassal.app/logos/Coop%20Mega.svg',
-  'Coop Obs': 'https://kassal.app/logos/Coop%20Obs.svg',
-  'Joker': 'https://kassal.app/logos/Joker.svg',
-  'Bunnpris': 'https://kassal.app/logos/Bunnpris.svg',
-  'Europris': 'https://kassal.app/logos/Europris.svg',
-  'Oda': 'https://kassal.app/logos/Oda.svg',
-};
-
-// Get logo URL for a store name (case-insensitive partial match)
-function getStoreLogo(storeName: string | null): string | null {
-  if (!storeName) return null;
-  const lower = storeName.toLowerCase();
-  for (const [key, url] of Object.entries(STORE_LOGOS)) {
-    if (lower.includes(key.toLowerCase())) {
-      return url;
-    }
-  }
-  return null;
-}
+import { UnifiedProductCard, type UnifiedFeedItem } from '@/components/UnifiedProductCard';
 
 interface StoreEntry {
   store_name: string;
@@ -77,248 +51,10 @@ interface KassalProduct {
   store_logo: string | null;
 }
 
-interface UnifiedFeedItem {
-  barcode: string;
-  name: string;
-  image: string | null;
-  kassalPrice: number | null;
-  kassalStore: string | null;
-  kassalStoreLogo: string | null;
-  communityMin: number | null;
-  communityMax: number | null;
-  submissionCount: number;
-  currency: string;
-  stores: string[];
-  locations: string[];
-  entries: StoreEntry[];
-  latestSubmission: string | null;
-  brand: string | null;
-}
-
-function matchesCity(entryLocation: string, userCity: string): boolean {
-  if (!entryLocation || !userCity) return false;
-  return entryLocation.toLowerCase().includes(userCity.toLowerCase());
-}
-
-function UnifiedProductCard({
-  item,
-  formatDate,
-  onPress,
-  userCity,
-  isInCart,
-  onAddToCart,
-}: {
-  item: UnifiedFeedItem;
-  formatDate: (dateString: string) => string;
-  onPress: () => void;
-  userCity: string | null;
-  isInCart: boolean;
-  onAddToCart: () => void;
-}) {
-  const [fetchedImage, setFetchedImage] = useState<string | null>(null);
-  const [fetchedStorePrice, setFetchedStorePrice] = useState<number | null>(null);
-  const [fetchedStoreName, setFetchedStoreName] = useState<string | null>(null);
-  const [fetchedStoreLogo, setFetchedStoreLogo] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
-
-  const needsLookup = !item.image || item.kassalPrice == null;
-  useEffect(() => {
-    if (!needsLookup) return;
-    let cancelled = false;
-    fetch(`${API_URL}/api/product/${item.barcode}`)
-      .then((res) => res.json())
-      .then((data: { imageUrl?: string | null; currentPrice?: number | null; storeName?: string | null; storeLogo?: string | null }) => {
-        if (cancelled) return;
-        if (!item.image && data.imageUrl) setFetchedImage(data.imageUrl);
-        if (item.kassalPrice == null && data.currentPrice) setFetchedStorePrice(data.currentPrice);
-        if (data.storeName) setFetchedStoreName(data.storeName);
-        if (data.storeLogo) setFetchedStoreLogo(data.storeLogo);
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [item.barcode, needsLookup]);
-
-  const displayImage = item.image || fetchedImage;
-  const storePrice = item.kassalPrice ?? fetchedStorePrice;
-  const storeName = item.kassalStore ?? fetchedStoreName;
-  const storeLogo = item.kassalStoreLogo ?? fetchedStoreLogo;
-
-  const hasCommunity = item.communityMin != null;
-  const hasKassal = storePrice != null;
-
-  const communityIsCheaper =
-    hasKassal && hasCommunity && item.communityMin! < storePrice!;
-
-  const bestPrice = hasCommunity && hasKassal
-    ? Math.min(item.communityMin!, storePrice!)
-    : storePrice ?? item.communityMin ?? 0;
-
-  const priceSpread = hasCommunity ? (item.communityMax! - item.communityMin!) : 0;
-  const isStablePrice = item.submissionCount >= 2 && priceSpread <= 1;
-  const isPopular = item.submissionCount >= 5;
-
-  const sortedEntries = [...item.entries].sort((a, b) => {
-    const aMatch = userCity ? matchesCity(a.location, userCity) : false;
-    const bMatch = userCity ? matchesCity(b.location, userCity) : false;
-    if (aMatch !== bMatch) return aMatch ? -1 : 1;
-    return a.price - b.price;
-  });
-
-  const nearbyEntry = userCity
-    ? sortedEntries.find((e) => matchesCity(e.location, userCity))
-    : null;
-  const bestEntry = nearbyEntry || sortedEntries[0] || null;
-
-  return (
-    <TouchableOpacity
-      style={[styles.card, subtleShadow]}
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardRow}>
-        {displayImage ? (
-          <Image source={{ uri: displayImage }} style={styles.productImage} resizeMode="cover" />
-        ) : (
-          <View style={styles.productImagePlaceholder}>
-            <Ionicons name="image-outline" size={24} color={colors.textMuted} />
-          </View>
-        )}
-        <View style={styles.cardContent}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-            <View style={styles.cardHeaderRight}>
-              <Text style={styles.bestPrice}>{bestPrice} {item.currency}</Text>
-              <TouchableOpacity
-                style={[styles.cartButton, isInCart && styles.cartButtonActive]}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  onAddToCart();
-                }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Ionicons
-                  name={isInCart ? 'checkmark-circle' : 'cart-outline'}
-                  size={20}
-                  color={isInCart ? colors.good : colors.primaryLight}
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.priceSection}>
-            {hasKassal && (
-              <View style={styles.kassalRow}>
-                {storeLogo ? (
-                  <SvgUri uri={storeLogo} width={18} height={18} />
-                ) : (
-                  <Ionicons name="pricetag" size={13} color={colors.primaryLight} />
-                )}
-                <Text style={styles.kassalLabel}>Billigste butikkpris</Text>
-                <Text style={styles.kassalValue}>{storePrice} {item.currency}</Text>
-                {storeName && (
-                  <Text style={styles.kassalStore}>{storeName}</Text>
-                )}
-              </View>
-            )}
-
-            {hasCommunity && (
-              <View style={styles.communitySection}>
-                <View style={styles.communityHeader}>
-                  <Ionicons name="people" size={12} color={colors.textSecondary} />
-                  <Text style={styles.communityLabel}>Brukerpris</Text>
-                </View>
-
-                {bestEntry && (
-                  <View style={styles.communityEntryCompact}>
-                    <View style={styles.entryStoreRow}>
-                      {(() => {
-                        const logo = getStoreLogo(bestEntry.store_name);
-                        return logo ? (
-                          <SvgUri uri={logo} width={18} height={18} />
-                        ) : (
-                          <Ionicons name="storefront-outline" size={16} color={colors.textMuted} />
-                        );
-                      })()}
-                      <Text style={styles.entryStoreCompact}>
-                        {bestEntry.store_name || 'Ukjent butikk'}
-                      </Text>
-                      {bestEntry.location ? (
-                        <Text style={styles.entryLocationCompact}>{bestEntry.location}</Text>
-                      ) : null}
-                    </View>
-                    <Text style={styles.entryPriceCompact}>{bestEntry.price} kr</Text>
-                  </View>
-                )}
-
-                {communityIsCheaper && (
-                  <View style={styles.cheaperRowCompact}>
-                    <Ionicons name="trending-down" size={12} color={colors.good} />
-                    <Text style={styles.cheaperTextCompact}>
-                      {(storePrice! - item.communityMin!).toFixed(0)} kr billigere
-                    </Text>
-                  </View>
-                )}
-
-                {sortedEntries.length > 1 && (
-                  <>
-                    <TouchableOpacity
-                      style={styles.expandButtonCompact}
-                      onPress={() => setExpanded(!expanded)}
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    >
-                      <Text style={styles.expandTextCompact}>
-                        {expanded ? 'Skjul' : `+${sortedEntries.length - 1} butikker`}
-                      </Text>
-                      <Ionicons
-                        name={expanded ? 'chevron-up' : 'chevron-down'}
-                        size={12}
-                        color={colors.textMuted}
-                      />
-                    </TouchableOpacity>
-
-                    {expanded && (
-                      <View style={styles.entryListCompact}>
-                        {sortedEntries.slice(1).map((entry, i) => (
-                          <View
-                            key={`${entry.store_name}-${entry.location}-${i}`}
-                            style={styles.entryListItemCompact}
-                          >
-                            {(() => {
-                              const logo = getStoreLogo(entry.store_name);
-                              return logo ? (
-                                <SvgUri uri={logo} width={14} height={14} />
-                              ) : (
-                                <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
-                              );
-                            })()}
-                            <Text style={styles.entryListStoreCompact} numberOfLines={1}>
-                              {entry.store_name || 'Ukjent'}
-                            </Text>
-                            {entry.location && (
-                              <Text style={styles.entryListLocationCompact} numberOfLines={1}>
-                                {entry.location}
-                              </Text>
-                            )}
-                            <Text style={styles.entryListPriceCompact}>{entry.price} kr</Text>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-                  </>
-                )}
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
 export default function CommunityScreen() {
   const router = useRouter();
-  const { city: userCity, setManualCity, loading: locationLoading } = useUserLocation();
-  const { addToCart, isInCart } = useCart();
+  const { locationLabel: userCity, setManualCity, loading: locationLoading, permissionStatus, openSettings, isManualOverride, refresh: refreshLocation } = useUserLocation();
+  const { addToCart, removeFromCart, isInCart, cartCount } = useCart();
   const [submissions, setSubmissions] = useState<GroupedPrice[]>([]);
   const [kassalProducts, setKassalProducts] = useState<KassalProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -642,8 +378,12 @@ export default function CommunityScreen() {
       item={item}
       formatDate={formatDate}
       userCity={userCity}
+      mode="feed"
       isInCart={isInCart(item.barcode)}
-      onAddToCart={() => handleAddToCart(item)}
+      onAddToCart={() => {
+        if (isInCart(item.barcode)) removeFromCart(item.barcode);
+        else handleAddToCart(item);
+      }}
       onPress={() =>
         router.push(
           `/product-detail?barcode=${item.barcode}&name=${encodeURIComponent(item.name)}`
@@ -671,15 +411,31 @@ export default function CommunityScreen() {
           <Ionicons name="arrow-back" size={20} color={colors.white} />
           <Text style={styles.backButtonText}>Tilbake</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Fellesskapspriser</Text>
-        <Text style={styles.subtitle}>
-            Fellesskapets priser
-        </Text>
+        <View style={styles.headerTitleRow}>
+          <View>
+            <Text style={styles.title}>Fellesskapspriser</Text>
+            <Text style={styles.subtitle}>Fellesskapets priser</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.headerCartButton}
+            onPress={() => router.push('/cart')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="cart-outline" size={26} color={colors.white} />
+            {cartCount > 0 && (
+              <View style={styles.headerCartBadge}>
+                <Text style={styles.headerCartBadgeText}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
 
         <TouchableOpacity
           style={styles.locationChip}
           onPress={() => {
-            setLocationInput(userCity || '');
+            setLocationInput('');
             setShowLocationModal(true);
           }}
         >
@@ -774,9 +530,41 @@ export default function CommunityScreen() {
             <Text style={styles.modalSubtitle}>
               Vi viser deg de beste prisene nær deg
             </Text>
+            {permissionStatus === 'granted' && !isManualOverride && (
+              <View style={styles.permissionEnabledBlock}>
+                <View style={styles.permissionEnabledRow}>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.good} />
+                  <Text style={styles.permissionEnabledText}>Posisjon er tillatt</Text>
+                </View>
+                {userCity ? (
+                  <Text style={styles.permissionLocationSubtext}>Din posisjon: {userCity}</Text>
+                ) : null}
+              </View>
+            )}
+            {permissionStatus === 'granted' && isManualOverride && userCity && (
+              <TouchableOpacity
+                style={styles.useMyPositionButton}
+                onPress={() => refreshLocation()}
+              >
+                <Ionicons name="locate" size={18} color={colors.primaryLight} />
+                <Text style={styles.useMyPositionButtonText}>Bruk min posisjon (GPS)</Text>
+              </TouchableOpacity>
+            )}
+            {permissionStatus === 'granted' && isManualOverride && userCity && (
+              <Text style={styles.manualOverrideHint}>Viser priser for: {userCity}</Text>
+            )}
+            {permissionStatus === 'denied' && (
+              <TouchableOpacity
+                style={styles.settingsButton}
+                onPress={openSettings}
+              >
+                <Ionicons name="settings-outline" size={18} color={colors.primaryLight} />
+                <Text style={styles.settingsButtonText}>Åpne innstillinger for å tillate posisjon</Text>
+              </TouchableOpacity>
+            )}
             <TextInput
               style={styles.modalInput}
-              placeholder="f.eks. Oslo, Bergen, Trondheim..."
+              placeholder={permissionStatus === 'granted' && !isManualOverride ? 'Eller velg et annet sted (f.eks. Oslo)...' : 'f.eks. Oslo, Bergen, Trondheim...'}
               placeholderTextColor={colors.textMuted}
               value={locationInput}
               onChangeText={setLocationInput}
@@ -846,6 +634,33 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontWeight: '600',
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  headerCartButton: {
+    position: 'relative',
+    padding: spacing.sm,
+  },
+  headerCartBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  headerCartBadgeText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
@@ -855,7 +670,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: spacing.md,
+    marginBottom: 0,
   },
   searchContainer: {
     flexDirection: 'row',
@@ -1276,6 +1091,66 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.md,
+  },
+  permissionEnabledBlock: {
+    marginBottom: spacing.md,
+  },
+  permissionEnabledRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  permissionEnabledText: {
+    fontSize: 14,
+    color: colors.good,
+    fontWeight: '500',
+  },
+  permissionLocationSubtext: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 4,
+    marginLeft: 26,
+  },
+  useMyPositionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+  },
+  useMyPositionButtonText: {
+    fontSize: 14,
+    color: colors.primaryLight,
+    fontWeight: '600',
+  },
+  manualOverrideHint: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginBottom: spacing.md,
+  },
+  settingsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    backgroundColor: 'rgba(167, 139, 250, 0.15)',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+  },
+  settingsButtonText: {
+    fontSize: 14,
+    color: colors.primaryLight,
+    fontWeight: '600',
   },
   modalInput: {
     backgroundColor: 'rgba(255, 255, 255, 0.08)',

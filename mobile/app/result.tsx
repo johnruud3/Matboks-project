@@ -42,6 +42,7 @@ import { PriceEvaluation } from '@/types';
 import { API_URL } from '@/utils/config';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useCart } from '@/context/CartContext';
+import { UnifiedProductCard, type UnifiedFeedItem } from '@/components/UnifiedProductCard';
 import {
   colors,
   gradients,
@@ -56,7 +57,7 @@ import {
 export default function ResultScreen() {
   const router = useRouter();
   const { barcode } = useLocalSearchParams<{ barcode: string }>();
-  const { addToCart, isInCart } = useCart();
+  const { addToCart, removeFromCart, isInCart, cartCount } = useCart();
 
   const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,7 +67,8 @@ export default function ResultScreen() {
   const [selectedStore, setSelectedStore] = useState<typeof STORES[0] | null>(null);
   const [customStoreName, setCustomStoreName] = useState('');
   const [showStorePicker, setShowStorePicker] = useState(false);
-  const [location, setLocation] = useState('');
+  const [by, setBy] = useState('');
+  const [sted, setSted] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [storePrice, setStorePrice] = useState<number | null>(null);
   const [kassalStoreName, setKassalStoreName] = useState<string | null>(null);
@@ -77,13 +79,13 @@ export default function ResultScreen() {
     maxPrice: number;
   } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
-  const { city: detectedCity } = useUserLocation();
+  const [productCardItem, setProductCardItem] = useState<UnifiedFeedItem | null>(null);
+  const { city: detectedCity, place: detectedPlace } = useUserLocation();
 
   useEffect(() => {
-    if (detectedCity && !location) {
-      setLocation(detectedCity);
-    }
-  }, [detectedCity]);
+    if (detectedCity && !by) setBy(detectedCity);
+    if (detectedPlace != null && detectedPlace !== '' && !sted) setSted(detectedPlace);
+  }, [detectedCity, detectedPlace]);
 
   useEffect(() => {
     if (!barcode) return;
@@ -101,6 +103,67 @@ export default function ResultScreen() {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [barcode]);
+
+  // Build shared product card item when we have evaluation + product data; fetch recent for entries
+  useEffect(() => {
+    if (!evaluation || !barcode) {
+      setProductCardItem(null);
+      return;
+    }
+    const base: UnifiedFeedItem = {
+      barcode,
+      name: evaluation.product.name,
+      image: imageUrl,
+      kassalPrice: storePrice,
+      kassalStore: kassalStoreName,
+      kassalStoreLogo,
+      communityMin: communityStats?.minPrice ?? null,
+      communityMax: communityStats?.maxPrice ?? null,
+      submissionCount: communityStats?.submissionCount ?? 0,
+      currency: evaluation.currency,
+      stores: [],
+      locations: [],
+      entries: [],
+      latestSubmission: null,
+      brand: evaluation.product.brand ?? null,
+    };
+    setProductCardItem(base);
+    let cancelled = false;
+    fetch(`${API_URL}/api/prices/recent/${barcode}?limit=50`)
+      .then((res) => res.json())
+      .then((data: { prices?: Array<{ store_name?: string; location?: string; price: number; submitted_at: string }> }) => {
+        if (cancelled) return;
+        const prices = data.prices ?? [];
+        const entries = prices.map((p) => ({
+          store_name: p.store_name ?? '',
+          location: p.location ?? '',
+          price: p.price,
+          submitted_at: p.submitted_at,
+        }));
+        const communityMin = communityStats?.minPrice ?? (entries.length ? Math.min(...entries.map((e) => e.price)) : null);
+        const communityMax = communityStats?.maxPrice ?? (entries.length ? Math.max(...entries.map((e) => e.price)) : null);
+        setProductCardItem((prev) =>
+          prev
+            ? {
+                ...prev,
+                image: prev.image || imageUrl,
+                kassalPrice: prev.kassalPrice ?? storePrice,
+                kassalStore: prev.kassalStore ?? kassalStoreName,
+                kassalStoreLogo: prev.kassalStoreLogo ?? kassalStoreLogo,
+                communityMin,
+                communityMax,
+                submissionCount: communityStats?.submissionCount ?? entries.length,
+                stores: [...new Set(entries.map((e) => e.store_name).filter(Boolean))],
+                locations: [...new Set(entries.map((e) => e.location).filter(Boolean))],
+                entries,
+                latestSubmission: entries[0]?.submitted_at ?? null,
+              }
+            : null
+        );
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [evaluation, barcode, imageUrl, storePrice, kassalStoreName, kassalStoreLogo, communityStats]);
 
   const handleEvaluate = async () => {
     if (!price || parseFloat(price) <= 0) {
@@ -143,7 +206,7 @@ export default function ResultScreen() {
         price: evaluation.price,
         currency: 'NOK',
         store_name: finalStoreName || undefined,
-        location: location || undefined,
+        location: sted.trim() ? `${by.trim()}, ${sted.trim()}` : by.trim() || undefined,
       });
 
       setContributed(true);
@@ -214,6 +277,30 @@ export default function ResultScreen() {
 
   return (
     <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
+      <LinearGradient colors={[...gradients.header]} style={styles.resultHeader}>
+        <TouchableOpacity style={styles.resultBackButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={20} color={colors.white} />
+          <Text style={styles.resultBackButtonText}>Tilbake</Text>
+        </TouchableOpacity>
+        <View style={styles.resultHeaderTitleRow}>
+          <Text style={styles.resultHeaderTitle}>Prisvurdering</Text>
+          <TouchableOpacity
+            style={styles.resultHeaderCartButton}
+            onPress={() => router.push('/cart')}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Ionicons name="cart-outline" size={26} color={colors.white} />
+            {cartCount > 0 && (
+              <View style={styles.resultHeaderCartBadge}>
+                <Text style={styles.resultHeaderCartBadgeText}>
+                  {cartCount > 99 ? '99+' : cartCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
+
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         {/* Barcode section */}
         <View style={styles.glassCard}>
@@ -255,61 +342,21 @@ export default function ResultScreen() {
 
         {evaluation && (
           <View style={styles.resultSection}>
-            {/* Product info with image */}
-            <View style={styles.glassCard}>
-              <View style={styles.productRow}>
-                {imageUrl ? (
-                  <Image source={{ uri: imageUrl }} style={styles.productImage} resizeMode="cover" />
-                ) : (
-                  <View style={styles.productImagePlaceholder}>
-                    <Ionicons name="image-outline" size={28} color={colors.textMuted} />
-                  </View>
-                )}
-                <View style={styles.productInfo}>
-                  <Text style={styles.productName}>{evaluation.product.name}</Text>
-                  {evaluation.product.brand && (
-                    <Text style={styles.productBrand}>{evaluation.product.brand}</Text>
-                  )}
-                  {evaluation.product.category && (
-                    <Text style={styles.productCategory}>{evaluation.product.category}</Text>
-                  )}
-                </View>
-              </View>
-
-              {/* Badges */}
-              {(storePrice || (communityStats && communityStats.submissionCount >= 2)) && (
-                <View style={styles.badgeSection}>
-                  {storePrice && (
-                    <View style={styles.storePriceBadge}>
-                      {kassalStoreLogo ? (
-                        <SvgUri uri={kassalStoreLogo} width={16} height={16} />
-                      ) : (
-                        <Ionicons name="pricetag" size={13} color={colors.primaryLight} />
-                      )}
-                      <Text style={styles.storePriceText}>
-                        Butikkpris: {storePrice} NOK
-                      </Text>
-                      {kassalStoreName && (
-                        <Text style={styles.storeNameText}>({kassalStoreName})</Text>
-                      )}
-                    </View>
-                  )}
-                  {communityStats && communityStats.submissionCount >= 2 &&
-                    (communityStats.maxPrice - communityStats.minPrice) <= 1 && (
-                    <View style={styles.goodPriceBadge}>
-                      <Ionicons name="checkmark-circle" size={14} color={colors.good} />
-                      <Text style={styles.goodPriceText}>God pris</Text>
-                    </View>
-                  )}
-                  {communityStats && communityStats.submissionCount >= 5 && (
-                    <View style={styles.popularBadge}>
-                      <Ionicons name="flame" size={14} color="#FB923C" />
-                      <Text style={styles.popularBadgeText}>Populær</Text>
-                    </View>
-                  )}
-                </View>
-              )}
-            </View>
+            {/* Product card – same as community/cart */}
+            {productCardItem && (
+              <UnifiedProductCard
+                item={productCardItem}
+                formatDate={(dateString) => new Date(dateString).toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}
+                userCity={detectedCity}
+                mode="result"
+                onPress={() =>
+                  router.push({
+                    pathname: '/product-detail',
+                    params: { barcode, name: encodeURIComponent(evaluation.product.name) },
+                  })
+                }
+              />
+            )}
 
             {/* Evaluation card with glow */}
             <View
@@ -391,13 +438,22 @@ export default function ResultScreen() {
                   />
                 )}
 
-                <TextInput
-                  style={styles.input}
-                  placeholder="Sted (valgfritt)"
-                  placeholderTextColor={colors.textMuted}
-                  value={location}
-                  onChangeText={setLocation}
-                />
+                <View style={styles.locationRow}>
+                  <TextInput
+                    style={[styles.input, styles.locationInput]}
+                    placeholder="By"
+                    placeholderTextColor={colors.textMuted}
+                    value={by}
+                    onChangeText={setBy}
+                  />
+                  <TextInput
+                    style={[styles.input, styles.locationInput]}
+                    placeholder="Sted"
+                    placeholderTextColor={colors.textMuted}
+                    value={sted}
+                    onChangeText={setSted}
+                  />
+                </View>
 
                 <TouchableOpacity
                   style={[styles.contributeButton, submitting && styles.buttonDisabled]}
@@ -425,13 +481,6 @@ export default function ResultScreen() {
               style={[styles.newScanButton, glowShadow]}
               onPress={() => router.push('/scanner')}
             >
-              <LinearGradient
-                colors={[...gradients.primaryBtn]}
-                style={styles.newScanGradient}
-              >
-                <Ionicons name="camera-outline" size={20} color={colors.white} />
-                <Text style={styles.newScanButtonText}>Skann nytt produkt</Text>
-              </LinearGradient>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -449,6 +498,10 @@ export default function ResultScreen() {
                   isInCart(barcode) && styles.cartButtonActive,
                 ]}
                 onPress={() => {
+                  if (isInCart(barcode)) {
+                    removeFromCart(barcode);
+                    return;
+                  }
                   const productPrice = communityStats?.minPrice || storePrice || evaluation.price || 0;
                   const store = kassalStoreName || selectedStore?.name || customStoreName || 'Ukjent butikk';
                   addToCart({
@@ -459,7 +512,7 @@ export default function ResultScreen() {
                     currency: evaluation.currency,
                     storeName: store,
                     storeLogo: kassalStoreLogo || selectedStore?.logo || null,
-                    location: location || null,
+                    location: sted.trim() ? `${by.trim()}, ${sted.trim()}` : by.trim() || null,
                   });
                 }}
               >
@@ -472,7 +525,7 @@ export default function ResultScreen() {
                   styles.cartButtonText,
                   isInCart(barcode) && styles.cartButtonTextActive,
                 ]}>
-                  {isInCart(barcode) ? 'Lagt til i handleliste' : 'Legg til i handleliste'}
+                  {isInCart(barcode) ? 'Fjern fra handleliste' : 'Legg til i handleliste'}
                 </Text>
               </TouchableOpacity>
             )}
@@ -569,6 +622,61 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+  resultHeader: {
+    padding: spacing.lg,
+    paddingTop: 60,
+    paddingBottom: spacing.md,
+  },
+  resultBackButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm + 4,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: radii.sm,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  resultBackButtonText: {
+    fontSize: 16,
+    color: colors.white,
+    fontWeight: '600',
+  },
+  resultHeaderTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultHeaderTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.white,
+  },
+  resultHeaderCartButton: {
+    position: 'relative',
+    padding: spacing.sm,
+  },
+  resultHeaderCartBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  resultHeaderCartBadgeText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
   glassCard: {
     backgroundColor: colors.glassBg,
     borderWidth: 1,
@@ -602,6 +710,15 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: colors.white,
     marginBottom: spacing.md,
+  },
+  locationRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  locationInput: {
+    flex: 1,
+    marginBottom: 0,
   },
   evaluateButton: {
     borderRadius: radii.lg,
@@ -838,11 +955,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     borderRadius: radii.lg,
-  },
-  newScanButtonText: {
-    color: colors.white,
-    fontSize: 16,
-    fontWeight: '700',
   },
   communityButton: {
     flexDirection: 'row',

@@ -37,14 +37,7 @@ export default function RootLayout() {
           name="result"
           options={{
             title: 'Prisvurdering',
-            headerShown: true,
-          }}
-        />
-        <Stack.Screen
-          name="history"
-          options={{
-            title: 'Historikk',
-            headerShown: true,
+            headerShown: false,
           }}
         />
         <Stack.Screen
