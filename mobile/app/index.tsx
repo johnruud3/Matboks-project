@@ -5,9 +5,11 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { colors, gradients, spacing, radii, glowShadow } from '@/utils/theme';
+import { useCart } from '@/context/CartContext';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { cartCount } = useCart();
 
   return (
     <LinearGradient colors={[...gradients.home]} style={styles.container}>
@@ -82,6 +84,26 @@ export default function HomeScreen() {
           <View style={styles.buttonContent}>
             <Ionicons name="receipt-outline" size={20} color={colors.white} />
             <Text style={styles.secondaryButtonText}>Skann kvittering</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          onPress={() => router.push('/cart')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.buttonContent}>
+            <View style={styles.cartIconContainer}>
+              <Ionicons name="cart-outline" size={20} color={colors.white} />
+              {cartCount > 0 && (
+                <View style={styles.cartBadge}>
+                  <Text style={styles.cartBadgeText}>
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.secondaryButtonText}>Handleliste</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -198,5 +220,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
+  },
+  cartIconContainer: {
+    position: 'relative',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -10,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  cartBadgeText: {
+    color: colors.white,
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

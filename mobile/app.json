@@ -20,7 +20,8 @@
       "infoPlist": {
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocationWhenInUseUsageDescription": "MatBoks bruker posisjonen din for å vise de beste prisene nær deg."
       }
     },
     "android": {
@@ -31,7 +32,9 @@
       "package": "com.prisappen.app",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ]
     },
     "web": {
@@ -43,6 +46,12 @@
         "expo-camera",
         {
           "cameraPermission": "Tillat Pris-Appen å bruke kameraet for å skanne strekkoder."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "MatBoks bruker posisjonen din for å vise de beste prisene nær deg."
         }
       ]
     ],

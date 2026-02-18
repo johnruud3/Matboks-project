@@ -25,3 +25,16 @@ export interface EvaluateRequest {
 export interface ScanHistoryItem extends PriceEvaluation {
   id: string;
 }
+
+export interface CartItem {
+  id: string;
+  barcode: string;
+  name: string;
+  image: string | null;
+  price: number;
+  currency: string;
+  storeName: string;
+  storeLogo: string | null;
+  location: string | null;
+  addedAt: string;
+}
