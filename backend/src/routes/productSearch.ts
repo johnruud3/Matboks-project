@@ -36,7 +36,7 @@ router.get('/search', async (req: Request, res: Response) => {
     const size = Math.min(parseInt(req.query.size as string) || 30, 100);
 
     const params = new URLSearchParams({
-      exclude_without_ean: 'true',
+      exclude_without_ean: '1',
       size: size.toString(),
     });
 

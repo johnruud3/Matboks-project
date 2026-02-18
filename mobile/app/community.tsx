@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { SvgUri } from 'react-native-svg';
 import { API_URL } from '@/utils/config';
 import { colors, gradients, spacing, radii, subtleShadow } from '@/utils/theme';
 
@@ -124,7 +125,7 @@ function UnifiedProductCard({
             {hasKassal && (
               <View style={styles.kassalRow}>
                 {item.kassalStoreLogo ? (
-                  <Image source={{ uri: item.kassalStoreLogo }} style={styles.storeLogo} resizeMode="contain" />
+                  <SvgUri uri={item.kassalStoreLogo} width={18} height={18} />
                 ) : (
                   <Ionicons name="pricetag" size={13} color={colors.primaryLight} />
                 )}
@@ -637,11 +638,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: 'rgba(167, 139, 250, 0.2)',
-  },
-  storeLogo: {
-    width: 18,
-    height: 18,
-    borderRadius: 4,
   },
   kassalLabel: {
     fontSize: 12,
