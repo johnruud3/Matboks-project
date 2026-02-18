@@ -15,20 +15,17 @@ interface GroupedPrice {
   latest_submission: string;
 }
 
-// Group prices within ±0.50 NOK tolerance
 router.get('/grouped', async (req: Request, res: Response) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
-    const allPrices = await getAllRecentPrices(limit * 3); // Fetch more to account for grouping
+    const allPrices = await getAllRecentPrices(limit * 3);
 
-    // Group by barcode and price range (±0.50 NOK)
     const grouped = new Map<string, GroupedPrice>();
 
     for (const submission of allPrices) {
       const key = submission.barcode;
 
       if (!grouped.has(key)) {
-        // First submission for this product
         grouped.set(key, {
           barcode: submission.barcode,
           product_name: submission.product_name,
@@ -41,46 +38,21 @@ router.get('/grouped', async (req: Request, res: Response) => {
           latest_submission: submission.submitted_at.toString(),
         });
       } else {
-        // Update existing group
         const group = grouped.get(key)!;
+        group.min_price = Math.min(group.min_price, submission.price);
+        group.max_price = Math.max(group.max_price, submission.price);
+        group.submission_count++;
 
-        // Check if price is within ±0.50 NOK of existing range
-        const withinRange =
-          submission.price >= group.min_price - 0.50 &&
-          submission.price <= group.max_price + 0.50;
+        if (submission.store_name && !group.stores.includes(submission.store_name)) {
+          group.stores.push(submission.store_name);
+        }
 
-        if (withinRange) {
-          // Add to existing group
-          group.min_price = Math.min(group.min_price, submission.price);
-          group.max_price = Math.max(group.max_price, submission.price);
-          group.submission_count++;
+        if (submission.location && !group.locations.includes(submission.location)) {
+          group.locations.push(submission.location);
+        }
 
-          if (submission.store_name && !group.stores.includes(submission.store_name)) {
-            group.stores.push(submission.store_name);
-          }
-
-          if (submission.location && !group.locations.includes(submission.location)) {
-            group.locations.push(submission.location);
-          }
-
-          // Update to latest submission time
-          if (new Date(submission.submitted_at) > new Date(group.latest_submission)) {
-            group.latest_submission = submission.submitted_at.toString();
-          }
-        } else {
-          // Price is too different, create a new entry with modified barcode key
-          const newKey = `${key}_${submission.price}`;
-          grouped.set(newKey, {
-            barcode: submission.barcode,
-            product_name: submission.product_name,
-            min_price: submission.price,
-            max_price: submission.price,
-            submission_count: 1,
-            currency: submission.currency,
-            stores: submission.store_name ? [submission.store_name] : [],
-            locations: submission.location ? [submission.location] : [],
-            latest_submission: submission.submitted_at.toString(),
-          });
+        if (new Date(submission.submitted_at) > new Date(group.latest_submission)) {
+          group.latest_submission = submission.submitted_at.toString();
         }
       }
     }
