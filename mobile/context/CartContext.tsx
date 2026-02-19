@@ -23,7 +23,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    refreshCart();
+    const t = setTimeout(() => refreshCart(), 400);
+    return () => clearTimeout(t);
   }, [refreshCart]);
 
   const addToCart = useCallback(async (item: Omit<CartItem, 'id' | 'addedAt'>) => {
