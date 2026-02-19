@@ -1,6 +1,4 @@
 node_modules/
-ios/
-android/
 .expo/
 .expo-shared/
 dist/
