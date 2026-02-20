@@ -8,6 +8,8 @@ import productRouter from './routes/product.js';
 import productSearchRouter from './routes/productSearch.js';
 import adminRouter from './routes/admin.js';
 import receiptRouter from './routes/receipt.js';
+import pushRouter from './routes/push.js';
+import { processDueBatches } from './services/pushService.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,6 +36,7 @@ app.use('/api/product', productRouter);
 app.use('/api/products', productSearchRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/receipt', receiptRouter);
+app.use('/api/push', pushRouter);
 
 app.listen(PORT, () => {
   console.log(`🚀 Pris-Appen API running on http://localhost:${PORT}`);
@@ -41,4 +44,12 @@ app.listen(PORT, () => {
   console.log(`🇳🇴 Norwegian market context enabled`);
   console.log(`🔑 OpenAI API Key present: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
   console.log(`🔑 OpenAI API Key length: ${process.env.OPENAI_API_KEY?.length || 0}`);
+
+  setInterval(() => {
+    processDueBatches().then((r) => {
+      if (r.sent > 0 || r.errors > 0) {
+        console.log(`[Push] Processed batches: ${r.sent} sent, ${r.errors} errors`);
+      }
+    }).catch((err) => console.error('[Push] processDueBatches failed:', err));
+  }, 60 * 1000);
 });

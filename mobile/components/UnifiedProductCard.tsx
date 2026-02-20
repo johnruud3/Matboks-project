@@ -56,7 +56,10 @@ function getStoreLogo(storeName: string | null): string | null {
 function matchesCity(entryLocation: string, userCity: string): boolean {
   if (!entryLocation || !userCity) return false;
   const cityPart = (s: string) => s.split(',')[0].trim().toLowerCase();
-  return cityPart(entryLocation) === cityPart(userCity);
+  const entryPart = cityPart(entryLocation);
+  const userPart = cityPart(userCity);
+  if (entryPart === userPart) return true;
+  return entryPart.includes(userPart) || userPart.includes(entryPart);
 }
 
 export function getBestPrice(item: UnifiedFeedItem, storePrice: number | null): number {
@@ -113,14 +116,36 @@ export function UnifiedProductCard(props: Props) {
   const communityIsCheaper = hasKassal && hasCommunity && item.communityMin! < storePrice!;
   const bestPrice = getBestPrice(item, storePrice);
 
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const entriesLast7Days = item.entries.filter((e) => now - new Date(e.submitted_at).getTime() <= SEVEN_DAYS_MS);
+  const entriesLast7DaysInCity = userCity ? entriesLast7Days.filter((e) => matchesCity(e.location, userCity)) : [];
+  const sortByPriceThenNewest = (a: StoreEntry, b: StoreEntry) => {
+    if (a.price !== b.price) return a.price - b.price;
+    return new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime();
+  };
+  const cheapestIn7DaysInCity =
+    entriesLast7DaysInCity.length > 0 ? [...entriesLast7DaysInCity].sort(sortByPriceThenNewest)[0] : null;
+  const cheapestIn7Days =
+    entriesLast7Days.length > 0 ? [...entriesLast7Days].sort(sortByPriceThenNewest)[0] : null;
+  const latestEntry =
+    item.entries.length > 0
+      ? [...item.entries].sort((a, b) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())[0]
+      : null;
+  const bestEntry = cheapestIn7DaysInCity || cheapestIn7Days || latestEntry || null;
+  const bestEntryIsFrom7Days = !!(cheapestIn7DaysInCity || cheapestIn7Days) && bestEntry === (cheapestIn7DaysInCity || cheapestIn7Days);
+
   const sortedEntries = [...item.entries].sort((a, b) => {
     const aMatch = userCity ? matchesCity(a.location, userCity) : false;
     const bMatch = userCity ? matchesCity(b.location, userCity) : false;
     if (aMatch !== bMatch) return aMatch ? -1 : 1;
-    return a.price - b.price;
+    const aTime = new Date(a.submitted_at).getTime();
+    const bTime = new Date(b.submitted_at).getTime();
+    return bTime - aTime;
   });
-  const nearbyEntry = userCity ? sortedEntries.find((e) => matchesCity(e.location, userCity)) : null;
-  const bestEntry = nearbyEntry || sortedEntries[0] || null;
+  const sameEntry = (a: StoreEntry, b: StoreEntry) =>
+    a.store_name === b.store_name && a.location === b.location && a.submitted_at === b.submitted_at && a.price === b.price;
+  const dropdownEntries = bestEntry ? sortedEntries.filter((e) => !sameEntry(e, bestEntry)) : sortedEntries;
 
   const headerAction =
     props.mode === 'feed' ? (
@@ -187,7 +212,12 @@ export function UnifiedProductCard(props: Props) {
                       <Text style={styles.entryStoreCompact}>{bestEntry.store_name || 'Ukjent butikk'}</Text>
                       {bestEntry.location ? <Text style={styles.entryLocationCompact}>{bestEntry.location}</Text> : null}
                     </View>
-                    <Text style={styles.entryPriceCompact}>{bestEntry.price} kr</Text>
+                    <View style={styles.entryMainRight}>
+                      <Text style={styles.entryMainHint}>
+                        {bestEntryIsFrom7Days ? 'Billigste brukerpris siste 7 dager' : 'Nyeste brukerpris'}
+                      </Text>
+                      <Text style={styles.entryPriceCompact}>{bestEntry.price} kr</Text>
+                    </View>
                   </View>
                 )}
                 {communityIsCheaper && (
@@ -196,26 +226,32 @@ export function UnifiedProductCard(props: Props) {
                     <Text style={styles.cheaperTextCompact}>{(storePrice! - item.communityMin!).toFixed(0)} kr billigere</Text>
                   </View>
                 )}
-                {sortedEntries.length > 1 && (
+                {dropdownEntries.length > 0 && (
                   <>
                     <TouchableOpacity style={styles.expandButtonCompact} onPress={() => setExpanded(!expanded)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                      <Text style={styles.expandTextCompact}>{expanded ? 'Skjul' : `+${sortedEntries.length - 1} butikker`}</Text>
+                      <Text style={styles.expandTextCompact}>{expanded ? 'Skjul' : `+${dropdownEntries.length} butikker`}</Text>
                       <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textMuted} />
                     </TouchableOpacity>
                     {expanded && (
                       <View style={styles.entryListCompact}>
-                        {sortedEntries.slice(1).map((entry, i) => (
+                        {dropdownEntries.slice(0, 10).map((entry, i) => (
                           <View key={`${entry.store_name}-${entry.location}-${i}`} style={styles.entryListItemCompact}>
-                            {getStoreLogo(entry.store_name) ? (
-                              <SvgUri uri={getStoreLogo(entry.store_name)!} width={14} height={14} />
-                            ) : (
-                              <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
-                            )}
-                            <Text style={styles.entryListStoreCompact} numberOfLines={1}>{entry.store_name || 'Ukjent'}</Text>
-                            {entry.location && <Text style={styles.entryListLocationCompact} numberOfLines={1}>{entry.location}</Text>}
+                            <View style={styles.entryListStoreRow}>
+                              {getStoreLogo(entry.store_name) ? (
+                                <SvgUri uri={getStoreLogo(entry.store_name)!} width={14} height={14} />
+                              ) : (
+                                <Ionicons name="storefront-outline" size={14} color={colors.textMuted} />
+                              )}
+                              <Text style={styles.entryListStoreCompact} numberOfLines={1}>{entry.store_name || 'Ukjent'}</Text>
+                              {entry.location ? <Text style={styles.entryListLocationCompact} numberOfLines={1}>{entry.location}</Text> : null}
+                              <Text style={styles.entryListDateCompact}>{formatDate(entry.submitted_at)}</Text>
+                            </View>
                             <Text style={styles.entryListPriceCompact}>{entry.price} kr</Text>
                           </View>
                         ))}
+                        <Text style={styles.entryListCountCompact}>
+                          {item.entries.length >= 99 ? '99+' : item.entries.length} butikker
+                        </Text>
                       </View>
                     )}
                   </>
@@ -303,7 +339,9 @@ const styles = StyleSheet.create({
   communityHeader: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   communityLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
   communityEntryCompact: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 4 },
-  entryStoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+  entryStoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
+  entryMainRight: { alignItems: 'flex-end', justifyContent: 'center' },
+  entryMainHint: { fontSize: 10, color: colors.textMuted, marginBottom: 2 },
   entryStoreCompact: { fontSize: 13, fontWeight: '600', color: colors.white },
   entryLocationCompact: { fontSize: 11, color: colors.textMuted },
   entryPriceCompact: { fontSize: 14, fontWeight: '700', color: colors.white },
@@ -312,8 +350,11 @@ const styles = StyleSheet.create({
   expandButtonCompact: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, paddingVertical: 4 },
   expandTextCompact: { fontSize: 11, color: colors.textMuted },
   entryListCompact: { gap: 2, borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.05)', paddingTop: 6 },
-  entryListItemCompact: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 },
-  entryListStoreCompact: { fontSize: 11, color: colors.textSecondary, flex: 1 },
+  entryListCountCompact: { fontSize: 10, color: colors.textMuted, textAlign: 'center', marginTop: 6 },
+  entryListItemCompact: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 3 },
+  entryListStoreRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 },
+  entryListStoreCompact: { fontSize: 11, color: colors.textSecondary },
   entryListLocationCompact: { fontSize: 10, color: colors.textMuted },
+  entryListDateCompact: { fontSize: 10, color: colors.textMuted },
   entryListPriceCompact: { fontSize: 12, fontWeight: '600', color: colors.white },
 });

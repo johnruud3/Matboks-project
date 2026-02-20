@@ -20,6 +20,9 @@ import { colors, gradients, spacing, radii, subtleShadow } from '@/utils/theme';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { useCart } from '@/context/CartContext';
 import { UnifiedProductCard, type UnifiedFeedItem } from '@/components/UnifiedProductCard';
+import { getFavoriteStores, setFavoriteStores } from '@/services/storage';
+import { STORES } from '@/constants/stores';
+import { getExpoPushTokenAsync, registerPushWithBackend } from '@/services/pushNotifications';
 
 interface StoreEntry {
   store_name: string;
@@ -68,10 +71,16 @@ export default function CommunityScreen() {
   const [kassalPage, setKassalPage] = useState(1);
   const [kassalHasMore, setKassalHasMore] = useState(true);
   const [extraFeedItems, setExtraFeedItems] = useState<UnifiedFeedItem[]>([]);
+  const [showFavoriteStoresModal, setShowFavoriteStoresModal] = useState(false);
+  const [favoriteStores, setFavoriteStoresState] = useState<string[]>([]);
   const kassalLoadingRef = useRef(false);
   const kassalPageRef = useRef(1);
   const kassalHasMoreRef = useRef(true);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    getFavoriteStores().then(setFavoriteStoresState);
+  }, []);
 
   const fetchSubmissions = async (append: boolean = false) => {
     try {
@@ -460,7 +469,88 @@ export default function CommunityScreen() {
             <ActivityIndicator size="small" color={colors.primaryLight} style={styles.searchSpinner} />
           )}
         </View>
+
+        <View style={styles.favoriteRow}>
+          <TouchableOpacity
+            style={styles.favoriteChip}
+            onPress={() => router.push('/favorite-deals')}
+          >
+            <Ionicons name="pricetag" size={16} color={colors.primaryLight} />
+            <Text style={styles.favoriteChipText}>Tilbud fra favorittbutikker</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.favoriteChip}
+            onPress={() => setShowFavoriteStoresModal(true)}
+          >
+            <Ionicons name="heart-outline" size={16} color={colors.white} />
+            <Text style={styles.favoriteChipText}>
+              {favoriteStores.length > 0 ? `${favoriteStores.length} valgt` : 'Velg favorittbutikker'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
+
+      <Modal
+        visible={showFavoriteStoresModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowFavoriteStoresModal(false)}
+      >
+        <View style={styles.favoriteStoresModalOverlay}>
+          <View style={styles.favoriteStoresModal}>
+            <View style={styles.favoriteStoresModalHeader}>
+              <Text style={styles.favoriteStoresModalTitle}>Favorittbutikker</Text>
+              <TouchableOpacity onPress={() => setShowFavoriteStoresModal(false)} hitSlop={12}>
+                <Ionicons name="close" size={28} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.favoriteStoresModalSubtitle}>
+              Velg butikker du vil få varsler fra når det kommer nye priser. Du kan åpne «Tilbud fra favorittbutikker» når som helst.
+            </Text>
+            <FlatList
+              data={STORES.filter((s) => s.code !== 'OTHER')}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => {
+                const isSelected = favoriteStores.includes(item.name);
+                return (
+                  <TouchableOpacity
+                    style={[styles.favoriteStoreOption, isSelected && styles.favoriteStoreOptionSelected]}
+                    onPress={() => {
+                      const next = isSelected
+                        ? favoriteStores.filter((x) => x !== item.name)
+                        : [...favoriteStores, item.name];
+                      setFavoriteStoresState(next);
+                    }}
+                  >
+                    {item.logo ? (
+                      <SvgUri uri={item.logo} width={24} height={24} />
+                    ) : (
+                      <Ionicons name="storefront-outline" size={24} color={colors.textMuted} />
+                    )}
+                    <Text style={styles.favoriteStoreOptionText}>{item.name}</Text>
+                    {isSelected && <Ionicons name="checkmark-circle" size={22} color={colors.primaryLight} />}
+                  </TouchableOpacity>
+                );
+              }}
+            />
+            <TouchableOpacity
+              style={styles.favoriteStoresDoneButton}
+              onPress={async () => {
+                await setFavoriteStores(favoriteStores);
+                setShowFavoriteStoresModal(false);
+                try {
+                  const token = await getExpoPushTokenAsync();
+                  if (token) await registerPushWithBackend(token, favoriteStores);
+                } catch (_) {
+                  // ignore
+                }
+              }}
+            >
+              <Text style={styles.favoriteStoresDoneButtonText}>Lagre</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <FlatList
         data={feed}
@@ -679,6 +769,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.glassBorder,
+    marginBottom: spacing.md,
   },
   searchIcon: {
     marginLeft: spacing.md,
@@ -691,6 +782,143 @@ const styles = StyleSheet.create({
   },
   searchSpinner: {
     marginRight: spacing.md,
+  },
+  favoriteRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 5,
+  },
+  favoriteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  favoriteChipText: {
+    fontSize: 13,
+    color: colors.white,
+    fontWeight: '500',
+  },
+  favoriteStoresModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  favoriteStoresModal: {
+    backgroundColor: colors.darkBg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    paddingBottom: 32,
+  },
+  favoriteStoresModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  favoriteStoresModalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  favoriteStoresModalSubtitle: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  favoriteStoreOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  favoriteStoreOptionSelected: {
+    backgroundColor: 'rgba(124, 58, 237, 0.15)',
+  },
+  favoriteStoreOptionText: {
+    flex: 1,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+  favoriteStoresDoneButton: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+  },
+  favoriteStoresDoneButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pushPermissionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  pushPermissionCard: {
+    backgroundColor: colors.darkBg,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 340,
+  },
+  pushPermissionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pushPermissionSubtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  pushPermissionButtons: {
+    gap: 12,
+  },
+  pushPermissionSecondaryButton: {
+    paddingVertical: 14,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  pushPermissionSecondaryText: {
+    color: colors.textSecondary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pushPermissionPrimaryButton: {
+    paddingVertical: 14,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+  },
+  pushPermissionPrimaryText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   list: {
     padding: spacing.md,

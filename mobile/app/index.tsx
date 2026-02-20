@@ -20,7 +20,7 @@ export default function HomeScreen() {
           resizeMode="contain"
         />
         <Text style={styles.subtitle}>
-          Skann strekkoder og få prisvurderinger fra AI
+          Skann strekkoder og få prisvurderinger fra AI 
         </Text>
         <Text style={styles.subtitle2}>
           Få tilbudspriser fra nærmeste butikk
@@ -85,7 +85,7 @@ export default function HomeScreen() {
         >
           <View style={styles.buttonContent}>
             <Ionicons name="receipt-outline" size={20} color={colors.white} />
-            <Text style={styles.secondaryButtonText}>Skann kvittering</Text>
+            <Text style={styles.secondaryButtonText}>Skann kvittering <Text style={styles.comingSoonLabel}>(Fungerer ikke)</Text></Text>
           </View>
         </TouchableOpacity>
       </View>

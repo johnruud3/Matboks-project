@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { submitPrice, getPriceStats, getRecentPrices, getAllRecentPrices, getPriceHistory } from '../services/databaseService.js';
 import { SubmitPriceRequest } from '../types/database.js';
+import { onPriceSubmitted } from '../services/pushService.js';
 
 const router = Router();
 
@@ -38,6 +39,10 @@ router.post('/submit', async (req: Request, res: Response) => {
       store_name,
       location,
     });
+
+    onPriceSubmitted(store_name || null).catch((err) =>
+      console.error('Push batch enqueue failed:', err)
+    );
 
     res.status(201).json(submission);
   } catch (error) {
