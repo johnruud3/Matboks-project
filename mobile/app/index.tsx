@@ -35,6 +35,9 @@ export default function HomeScreen() {
         style={styles.logo2}
         resizeMode="contain"
       />
+      <View>
+        <Text style={styles.cautionText}>Appen er i testing. Systemer kan være utilregnelige. Dersom du finner feil eller appen crasher, vennligst del crashreport</Text>
+      </View>
 
       <View style={styles.buttonContainer}>
         {/* Primary CTA - Glassmorphic with glow */}
@@ -90,7 +93,7 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-          Norsk markedskontekst · AI-drevet analyse · kassal.app
+         AI-drevet mat og prisanalyse · kassal.app
         </Text>
         <Text style={styles.footerTextSmall}>
           av John-Kristian G. Ruud
@@ -112,18 +115,18 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: '110%',
-    marginTop: '-20%',
+    marginTop: '-10%',
     height: undefined,
     aspectRatio: 1.47,
-    transform: [{ scale: 1.9 }],
+    transform: [{ scale: 1.7 }],
   },
   subtitle: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     paddingHorizontal: 20,
-    marginBottom: 3,
-    marginTop: '-30%',
+    marginBottom: 1,
+    marginTop: '-36%',
     lineHeight: 12,
   },
   subtitle2: {
@@ -144,9 +147,19 @@ const styles = StyleSheet.create({
   },
   logo2: {
     width: '170%',
-    height: 300,
+    height: '50%',
     alignSelf: 'center',
-    marginVertical: 60,
+    marginVertical: -70,
+  },
+  cautionText: {
+    fontSize: 17,
+    color: colors.textMuted,
+    paddingLeft: 70,
+    paddingRight: 70,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 65,
+    lineHeight: 19,
   },
   buttonContainer: {
     gap: spacing.sm + 4,
@@ -187,8 +200,11 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
+    marginTop: 5,
+    marginBottom: 5,
     paddingBottom: spacing.sm + 2,
     paddingTop: spacing.sm,
+    transform: [{ translateY: -12 }],
   },
   footerText: {
     fontSize: 14,
