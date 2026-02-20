@@ -1,6 +1,11 @@
 import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const publicDir = path.join(__dirname, '..', 'public');
 import evaluateRouter from './routes/evaluate.js';
 import pricesRouter from './routes/prices.js';
 import groupedPricesRouter from './routes/groupedPrices.js';
@@ -18,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files for admin dashboard
-app.use('/admin', express.static('public'));
+app.use('/admin', express.static(publicDir));
 
 app.get('/health', (req, res) => {
   res.json({
@@ -37,6 +42,9 @@ app.use('/api/products', productSearchRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/receipt', receiptRouter);
 app.use('/api/push', pushRouter);
+
+// Landing page (privacy policy + support) at root for App Store etc.
+app.use(express.static(publicDir));
 
 app.listen(PORT, () => {
   console.log(`🚀 Pris-Appen API running on http://localhost:${PORT}`);
