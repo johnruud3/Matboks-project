@@ -38,7 +38,15 @@ export default function ProductDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const productName = typeof name === 'string' ? decodeURIComponent(name) : 'Produkt';
+  const productName = (() => {
+    const raw = Array.isArray(name) ? name[0] : name;
+    if (typeof raw !== 'string' || !raw) return 'Produkt';
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  })();
 
   useEffect(() => {
     fetchPriceHistory();
