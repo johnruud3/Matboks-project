@@ -1,10 +1,8 @@
 import 'dotenv/config';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, '..', 'public');
 import evaluateRouter from './routes/evaluate.js';
 import pricesRouter from './routes/prices.js';

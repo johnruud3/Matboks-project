@@ -164,7 +164,7 @@ async function sendExpoPush(
     throw new Error(`Expo push failed: ${response.status} ${text}`);
   }
 
-  const result = await response.json();
+  const result = (await response.json()) as { data?: Array<{ status?: string; message?: string }> };
   const ticket = result.data?.[0];
   if (ticket?.status === 'error') {
     throw new Error(ticket.message || 'Expo push error');
