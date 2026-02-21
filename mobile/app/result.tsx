@@ -32,6 +32,7 @@ const STORES = [
   { name: 'Annen butikk', code: 'OTHER', logo: null },
 ];
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { getHasCoachAccess, addLogEntry, type MealType } from '@/services/coachStorage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -56,8 +57,20 @@ import {
 
 export default function ResultScreen() {
   const router = useRouter();
-  const { barcode } = useLocalSearchParams<{ barcode: string }>();
+  const params = useLocalSearchParams<{
+    barcode?: string;
+    type?: string;
+    mealDescription?: string;
+    mealCalories?: string;
+    mealProtein?: string;
+    mealFat?: string;
+  }>();
+  const { barcode, type: resultType, mealDescription, mealCalories, mealProtein, mealFat } = params;
   const { addToCart, removeFromCart, isInCart, cartCount } = useCart();
+  const [hasCoachAccess, setHasCoachAccess] = useState(false);
+  const [addedToCoachLog, setAddedToCoachLog] = useState(false);
+  const [addedToCoachLogBarcode, setAddedToCoachLogBarcode] = useState(false);
+  const [coachLogMealType, setCoachLogMealType] = useState<MealType>('snack');
 
   const [price, setPrice] = useState('');
   const [loading, setLoading] = useState(false);
@@ -78,9 +91,18 @@ export default function ResultScreen() {
     minPrice: number;
     maxPrice: number;
   } | null>(null);
+  const [nutriments, setNutriments] = useState<{
+    caloriesPer100g?: number;
+    proteinPer100g?: number;
+    fatPer100g?: number;
+  } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   const [productCardItem, setProductCardItem] = useState<UnifiedFeedItem | null>(null);
   const { city: detectedCity, place: detectedPlace } = useUserLocation();
+
+  useEffect(() => {
+    getHasCoachAccess().then(setHasCoachAccess);
+  }, []);
 
   useEffect(() => {
     if (detectedCity && !by) setBy(detectedCity);
@@ -99,6 +121,7 @@ export default function ResultScreen() {
         if (data.storeName) setKassalStoreName(data.storeName);
         if (data.storeLogo) setKassalStoreLogo(data.storeLogo);
         if (data.communityStats) setCommunityStats(data.communityStats);
+        if (data.nutriments) setNutriments(data.nutriments);
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -274,6 +297,83 @@ export default function ResultScreen() {
       default: return 'Ukjent';
     }
   };
+
+  // Meal result (from food photo) – show meal card + coach card
+  if (resultType === 'meal') {
+    const cal = parseInt(mealCalories ?? '0', 10) || 0;
+    const prot = parseInt(mealProtein ?? '0', 10) || 0;
+    const fatG = mealFat != null ? parseInt(mealFat, 10) : undefined;
+    const fat = fatG != null && !Number.isNaN(fatG) ? fatG : undefined;
+    const addToCoachLog = async () => {
+      await addLogEntry({
+        name: mealDescription ?? 'Måltid',
+        calories: cal,
+        protein: prot,
+        ...(fat != null && { fat }),
+        source: 'photo',
+        mealType: coachLogMealType,
+      });
+      setAddedToCoachLog(true);
+    };
+    return (
+      <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
+        <LinearGradient colors={[...gradients.header]} style={styles.resultHeader}>
+          <TouchableOpacity style={styles.resultBackButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={20} color={colors.white} />
+            <Text style={styles.resultBackButtonText}>Tilbake</Text>
+          </TouchableOpacity>
+        </LinearGradient>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          <View style={styles.glassCard}>
+            <Ionicons name="restaurant" size={32} color={colors.primaryLight} />
+            <Text style={styles.mealTitle}>{mealDescription ?? 'Måltid'}</Text>
+            <Text style={styles.mealMacros}>
+              {cal} kcal · {prot} g protein
+              {fat != null ? ` · ${fat} g fett` : ''}
+            </Text>
+          </View>
+          {hasCoachAccess && (
+            <View style={[styles.glassCard, styles.coachCard]}>
+              <Ionicons name="fitness" size={24} color={colors.primaryLight} />
+              <Text style={styles.coachCardTitle}>AI mat coach</Text>
+              <Text style={styles.coachCardText}>
+                Dette passer inn i dagens logg. Legg til for å holde oversikt over kalorier og protein.
+              </Text>
+              {!addedToCoachLog && (
+                <View style={styles.coachMealTypeRow}>
+                  {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((value) => (
+                    <TouchableOpacity
+                      key={value}
+                      style={[styles.coachMealTypeChip, coachLogMealType === value && styles.coachMealTypeChipActive]}
+                      onPress={() => setCoachLogMealType(value)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.coachMealTypeChipText, coachLogMealType === value && styles.coachMealTypeChipTextActive]}>
+                        {value === 'breakfast' ? 'Frokost' : value === 'lunch' ? 'Lunsj' : value === 'dinner' ? 'Middag' : 'Snack'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+              {addedToCoachLog ? (
+                <Text style={styles.addedToLogText}>Lagt til i dagens logg</Text>
+              ) : (
+                <TouchableOpacity style={styles.addToLogButton} onPress={addToCoachLog}>
+                  <Text style={styles.addToLogButtonText}>Legg til i dagens logg</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+          <TouchableOpacity
+            style={[styles.newScanButton, { backgroundColor: colors.primary, padding: spacing.md }]}
+            onPress={() => router.push('/scanner')}
+          >
+            <Text style={styles.newScanButtonText}>Ny skanning</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
 
   return (
     <LinearGradient colors={[...gradients.screenBg]} style={styles.container}>
@@ -529,6 +629,53 @@ export default function ResultScreen() {
                 </Text>
               </TouchableOpacity>
             )}
+
+            {hasCoachAccess && evaluation && barcode && nutriments && (nutriments.caloriesPer100g != null || nutriments.proteinPer100g != null) && (
+              <View style={[styles.glassCard, styles.coachCard]}>
+                <Ionicons name="fitness" size={24} color={colors.primaryLight} />
+                <Text style={styles.coachCardTitle}>AI mat coach</Text>
+                <Text style={styles.coachCardText}>
+                  Legg til produktet i dagens logg (per 100 g) for å holde oversikt.
+                </Text>
+                {!addedToCoachLogBarcode && (
+                  <View style={styles.coachMealTypeRow}>
+                    {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map((value) => (
+                      <TouchableOpacity
+                        key={value}
+                        style={[styles.coachMealTypeChip, coachLogMealType === value && styles.coachMealTypeChipActive]}
+                        onPress={() => setCoachLogMealType(value)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[styles.coachMealTypeChipText, coachLogMealType === value && styles.coachMealTypeChipTextActive]}>
+                          {value === 'breakfast' ? 'Frokost' : value === 'lunch' ? 'Lunsj' : value === 'dinner' ? 'Middag' : 'Snack'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+                {addedToCoachLogBarcode ? (
+                  <Text style={styles.addedToLogText}>Lagt til i dagens logg</Text>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.addToLogButton}
+                    onPress={async () => {
+                      await addLogEntry({
+                        name: evaluation.product.name,
+                        calories: nutriments.caloriesPer100g ?? 0,
+                        protein: nutriments.proteinPer100g ?? 0,
+                        ...(nutriments.fatPer100g != null && { fat: Math.round(nutriments.fatPer100g) }),
+                        source: 'barcode',
+                        barcode,
+                        mealType: coachLogMealType,
+                      });
+                      setAddedToCoachLogBarcode(true);
+                    }}
+                  >
+                    <Text style={styles.addToLogButtonText}>Legg til i dagens logg (100 g)</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -684,6 +831,77 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+  },
+  mealTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    marginBottom: 4,
+  },
+  mealMacros: {
+    fontSize: 14,
+    color: colors.textMuted,
+  },
+  coachCard: {
+    marginTop: spacing.sm,
+  },
+  coachCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: spacing.sm,
+    marginBottom: 4,
+  },
+  coachCardText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+    lineHeight: 20,
+  },
+  coachMealTypeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: spacing.md,
+  },
+  coachMealTypeChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: radii.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  coachMealTypeChipActive: {
+    backgroundColor: 'rgba(124, 58, 237, 0.35)',
+  },
+  coachMealTypeChipText: {
+    fontSize: 13,
+    color: colors.textMuted,
+  },
+  coachMealTypeChipTextActive: {
+    color: colors.primaryLight,
+    fontWeight: '600',
+  },
+  addToLogButton: {
+    backgroundColor: colors.primary,
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    alignItems: 'center',
+  },
+  addToLogButtonText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  addedToLogText: {
+    color: colors.good,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  newScanButtonText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '600',
   },
   label: {
     fontSize: 13,

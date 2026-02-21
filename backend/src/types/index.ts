@@ -1,3 +1,10 @@
+export interface ProductNutriments {
+  caloriesPer100g?: number;
+  proteinPer100g?: number;
+  carbsPer100g?: number;
+  fatPer100g?: number;
+}
+
 export interface Product {
   name: string;
   brand?: string;
@@ -6,6 +13,7 @@ export interface Product {
   currentPrice?: number;
   storeName?: string;
   storeLogo?: string;
+  nutriments?: ProductNutriments;
 }
 
 export interface EvaluateRequest {

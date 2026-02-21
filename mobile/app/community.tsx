@@ -49,7 +49,7 @@ interface KassalProduct {
   brand: string | null;
   ean: string | null;
   image: string | null;
-  current_price: number;
+  current_price: number | null;
   store_name: string | null;
   store_logo: string | null;
 }
@@ -267,8 +267,9 @@ export default function CommunityScreen() {
 
       const existing = communityMap.get(ean);
       if (existing) {
-        if (existing.kassalPrice == null || kp.current_price < existing.kassalPrice) {
-          existing.kassalPrice = kp.current_price;
+        const price = kp.current_price;
+        if (price != null && (existing.kassalPrice == null || price < existing.kassalPrice)) {
+          existing.kassalPrice = price;
           existing.kassalStore = kp.store_name;
           existing.kassalStoreLogo = kp.store_logo;
         }

@@ -67,14 +67,12 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={() => {}}
+          onPress={() => router.push('/coach')}
           activeOpacity={0.8}
         >
           <View style={styles.buttonContent}>
-          <Ionicons name="gift" size={20} color={colors.white} />
-            <Text style={styles.secondaryButtonText}>
-              AI mat coach <Text style={styles.comingSoonLabel}>(Kommer!)</Text>
-            </Text>
+            <Ionicons name="fitness-outline" size={20} color={colors.white} />
+            <Text style={styles.secondaryButtonText}>AI mat coach</Text>
           </View>
         </TouchableOpacity>
 
@@ -92,7 +90,7 @@ export default function HomeScreen() {
 
       <View style={styles.footer}>
         <Text style={styles.footerText}>
-         AI-drevet mat og prisanalyse · kassal.app
+         AI-drevet mat og prisanalyse · Produktinfo fra Open Food Facts
         </Text>
         <Text style={styles.footerTextSmall}>
           av John-Kristian G. Ruud

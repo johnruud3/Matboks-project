@@ -78,6 +78,13 @@ export default function ScannerScreen() {
       {/* Frosted glass footer */}
       <BlurView intensity={80} tint="dark" style={styles.footer}>
         <TouchableOpacity
+          style={styles.foodPhotoButton}
+          onPress={() => router.push('/food-photo-capture')}
+        >
+          <Ionicons name="restaurant-outline" size={20} color={colors.white} />
+          <Text style={styles.foodPhotoButtonText}>Bilde av mat</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           style={styles.cancelButton}
           onPress={() => router.back()}
         >
@@ -206,6 +213,23 @@ const styles = StyleSheet.create({
   footer: {
     padding: spacing.lg,
     paddingBottom: spacing.xl,
+    gap: spacing.sm,
+  },
+  foodPhotoButton: {
+    backgroundColor: 'rgba(124, 58, 237, 0.6)',
+    padding: spacing.md,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  foodPhotoButtonText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
   },
   cancelButton: {
     backgroundColor: 'rgba(255,255,255,0.12)',

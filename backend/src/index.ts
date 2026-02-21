@@ -12,6 +12,7 @@ import productSearchRouter from './routes/productSearch.js';
 import adminRouter from './routes/admin.js';
 import receiptRouter from './routes/receipt.js';
 import pushRouter from './routes/push.js';
+import coachRouter from './routes/coach.js';
 import { processDueBatches } from './services/pushService.js';
 
 const app = express();
@@ -27,8 +28,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     message: 'Pris-Appen API is running',
-    kassal_key_set: !!process.env.KASSAL_API_KEY,
-    kassal_key_length: process.env.KASSAL_API_KEY?.length || 0,
+    product_api: 'openfoodfacts',
   });
 });
 
@@ -40,6 +40,7 @@ app.use('/api/products', productSearchRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/receipt', receiptRouter);
 app.use('/api/push', pushRouter);
+app.use('/api/coach', coachRouter);
 
 // Landing page (privacy policy + support) at root for App Store etc.
 app.use(express.static(publicDir));

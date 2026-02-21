@@ -22,6 +22,7 @@ router.get('/:barcode', async (req: Request, res: Response) => {
       currentPrice: product.currentPrice ?? null,
       storeName: product.storeName ?? null,
       storeLogo: product.storeLogo ?? null,
+      nutriments: product.nutriments ?? null,
       communityStats: stats ? {
         submissionCount: stats.submission_count,
         minPrice: stats.min_price,
@@ -30,7 +31,7 @@ router.get('/:barcode', async (req: Request, res: Response) => {
       } : null,
     });
   } catch (error) {
-    res.status(500).json({ imageUrl: null, currentPrice: null, storeName: null, storeLogo: null, communityStats: null });
+    res.status(500).json({ imageUrl: null, currentPrice: null, storeName: null, storeLogo: null, nutriments: null, communityStats: null });
   }
 });
 

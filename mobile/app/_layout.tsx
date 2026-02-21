@@ -63,7 +63,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="scanner"
           options={{
-            title: 'Skann strekkode',
+            title: 'Skann',
             headerShown: true,
           }}
         />
@@ -106,6 +106,41 @@ export default function RootLayout() {
           options={{
             title: 'Tilbud fra favorittbutikker',
             headerShown: false,
+          }}
+        />
+        <Stack.Screen
+          name="coach"
+          options={{ title: 'AI mat coach', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-settings"
+          options={{ title: 'Mål for mat coach', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-add-food"
+          options={{ title: 'Legg til mat', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-meals"
+          options={{ title: 'Mine måltider', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-history"
+          options={{ title: 'Tidligere dager', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-day-detail"
+          options={{ title: 'Dag', headerShown: false }}
+        />
+        <Stack.Screen
+          name="coach-ask"
+          options={{ title: 'Still coach et spørsmål', headerShown: false }}
+        />
+        <Stack.Screen
+          name="food-photo-capture"
+          options={{
+            title: 'Bilde av mat',
+            headerShown: true,
           }}
         />
       </Stack>
